@@ -94,7 +94,7 @@ let current: Book | null = null, file: File | null = null, sourceUrl = '', synth
 let worker: Worker | null = null, runId = 0, busy = false, books: Book[] = [], session: Session | null = null;
 let lastTick = 0, lastSaved = 0, lastSessionSaved = 0, seekingBySkip = false, skipRequestAt = 0;
 let generation = 0, toastTimer = 0, sourceReady = false;
-const VERSION = '0.5.0';
+const VERSION = '0.5.1';
 const sessionFiles = new Map<string, File>();
 let stage = 'Choose a book', decoder = 'untested';
 let requested = 0, completed = 0, missed = 0;
@@ -245,7 +245,7 @@ async function loadFile(selected: File, importAudio = true) {
     if (selected.size > 1.1e9) throw Error('Phase 1 is scoped to files up to approximately 1 GB. This file is larger.');
     if (!isSecureContext || !crypto.subtle) throw Error('Open the HTTPS test site. A plain HTTP network address cannot run the full offline/analysis test.');
     say('Reading the book’s local identity and chapters…', true);
-    const id = await fingerprint(selected); await renderLibrary();
+    const id = await fingerprint(selected);
     file = selected; synthetic = false;
     const saved = books.find(b => b.id === id);
     current = saved || { id, title: selected.name, filename: selected.name, size: selected.size, duration: 0, chapters: [], maps: emptyMaps(), analyzedUntil: 0, complete: false, position: 0, strength: 'conservative', rate: 1, updated: Date.now() };
@@ -254,18 +254,28 @@ async function loadFile(selected: File, importAudio = true) {
       if (progress && Number.isFinite(progress.position) && progress.position >= 0) current.position = progress.position;
     } catch { /* Use the IndexedDB position when a fast checkpoint is unavailable. */ }
     sessionFiles.set(id, selected);
-    if (importAudio) {
-      try {
-        await saveImportedBook(id, selected, current);
-        if (navigator.storage?.persist) void navigator.storage.persist().catch(() => false);
-      } catch {
-        storageWarning = 'The book can play now, but browser storage could not save its audio. Check device space and select the file again to enable reopening.';
-      }
-    }
-    localStorage.setItem('still-last-book', id);
+    try { localStorage.setItem('still-last-book', id); } catch { /* Playback can continue with browser storage restricted. */ }
     renderBook(); setSource(selected);
-    await saveBook(); await renderLibrary();
     location.hash = '/player';
+    if (importAudio) {
+      storageWarning = 'Saving the book on this device. You can press Play while it saves.';
+      void saveImportedBook(id, selected, current).then(async () => {
+        if (navigator.storage?.persist) void navigator.storage.persist().catch(() => false);
+        await renderLibrary();
+        if (ownGeneration === generation) {
+          storageWarning = '';
+          say('Book saved locally. Press Play to continue.');
+        }
+      }).catch(error => {
+        if (ownGeneration !== generation) return;
+        storageWarning = `The selected book can play, but could not be saved for reopening. ${error instanceof Error ? error.message : 'Check available device storage and try importing again.'}`;
+        say(storageWarning, true);
+      });
+    } else {
+      void saveBook();
+      void renderLibrary().catch(fail);
+    }
+    say(storageWarning || 'Book ready. Press Play to continue.', !!storageWarning);
     if (!saved?.container) {
       const metaWorker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = metaWorker; renderAnalysis();
       metaWorker.onmessage = ({ data }) => {

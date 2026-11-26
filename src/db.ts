@@ -60,6 +60,14 @@ export async function storedAudio(id: string): Promise<Blob | undefined> {
     request.onerror = () => reject(request.error);
   });
 }
+export async function deleteBook(id: string) {
+  const db = await database();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['books', 'audio'], 'readwrite');
+    tx.objectStore('books').delete(id); tx.objectStore('audio').delete(id);
+    tx.oncomplete = () => resolve(); tx.onabort = tx.onerror = () => reject(tx.error);
+  });
+}
 export async function storedAudioIds(): Promise<Set<string>> {
   const db = await database();
   return new Promise((resolve, reject) => {

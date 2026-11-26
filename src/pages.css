@@ -68,3 +68,27 @@ html[data-theme=dark] .page-navigation { border-color: #30423a; }
   .page-view { margin: 12px auto; }
   .player { padding: 12px; }
 }
+
+body, button, select, textarea, input { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+h1, h2, .brand { font-family: inherit; letter-spacing: -0.6px; }
+.library-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.library-title h1 { margin-bottom: 0; }
+.add-book { width: 44px; min-height: 44px; padding: 0; border-radius: 50%; font-size: 28px; line-height: 1; }
+.book-row { display: flex; align-items: center; gap: 8px; }
+.book-open { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; border: 0; background: transparent; padding: 8px 0; text-align: left; font-weight: 500; }
+.book-open:hover { background: transparent; }
+.book-cover { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex: 0 0 44px; background: #dce5df; }
+.book-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.book-menu { position: relative; border: 0; padding: 0; }
+.book-menu summary { list-style: none; padding: 8px; color: #60736a; letter-spacing: 2px; }
+.book-menu summary::-webkit-details-marker { display: none; }
+.book-actions { position: absolute; right: 0; top: 34px; z-index: 3; display: grid; width: 180px; padding: 6px; background: white; border: 1px solid #dce5df; border-radius: 10px; box-shadow: 0 8px 25px #0002; }
+.book-actions button { border: 0; border-radius: 6px; text-align: left; padding: 9px 10px; min-height: 38px; font-size: 13px; }
+.buttons .play { display: grid; place-items: center; }
+.play-symbol { display: block; width: 0; height: 0; margin-left: 4px; border-top: 11px solid transparent; border-bottom: 11px solid transparent; border-left: 16px solid currentColor; }
+.play.is-playing .play-symbol { width: 15px; height: 20px; margin-left: 0; border: 0; background: linear-gradient(90deg, currentColor 0 4px, transparent 4px 10px, currentColor 10px 14px); }
+#clear { margin-top: 18px; }
+html[data-accent=purple] { --accent: #6b4aa1; } html[data-accent=blue] { --accent: #2563a8; } html[data-accent=turquoise] { --accent: #087f83; } html[data-accent=aqua] { --accent: #167f9d; } html[data-accent=grey] { --accent: #5b6470; } html[data-accent=green] { --accent: #315e47; }
+html[data-accent] .primary, html[data-accent] .page-navigation a[aria-current=page] { background: var(--accent); border-color: var(--accent); }
+html[data-accent] input[type=range], html[data-accent] progress { accent-color: var(--accent); }
+html[data-theme=dark] .book-actions { background: #192421; border-color: #30423a; }

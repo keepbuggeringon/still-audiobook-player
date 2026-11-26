@@ -21,8 +21,10 @@ document.querySelector('header')!.append(navigation);
 const libraryView = views.get('library')!;
 const libraryHeading = document.createElement('h1');
 libraryHeading.textContent = 'Your library';
-libraryView.append(libraryHeading);
-libraryView.append(document.querySelector('.file-button')!);
+const addBook = document.createElement('button'); addBook.className = 'add-book'; addBook.textContent = '+'; addBook.setAttribute('aria-label', 'Add audiobook');
+const libraryTitle = document.createElement('div'); libraryTitle.className = 'library-title'; libraryTitle.append(libraryHeading, addBook); libraryView.append(libraryTitle);
+const fileButton = document.querySelector('.file-button') as HTMLElement; const fileInput = document.getElementById('file') as HTMLInputElement; fileButton.hidden = true; addBook.onclick = () => fileInput.click();
+libraryView.append(fileButton);
 libraryView.append(document.getElementById('file-help')!);
 libraryView.append(document.querySelector('.small')!);
 const libraryDetails = document.getElementById('library')!.closest('details')!;
@@ -34,6 +36,7 @@ const settingsView = views.get('settings')!;
 const settingsHeading = document.createElement('h1');
 settingsHeading.textContent = 'Settings';
 settingsView.append(settingsHeading, document.querySelector('.settings-row')!);
+settingsView.append(document.getElementById('clear')!);
 const playerControls = document.createElement('div');
 playerControls.className = 'settings-row';
 playerControls.append(document.getElementById('speed')!.closest('label')!, document.getElementById('strength')!.closest('label')!);
@@ -80,14 +83,14 @@ function navigate() {
 window.addEventListener('hashchange', navigate);
 navigate();
 import { diagnosticSource, emptyMaps, skipTarget, type Strength, type Maps } from './analysis';
-import { all, put, fingerprint, clearRecords, saveImportedBook, storedAudio, storedAudioIds } from './db';
+import { all, put, fingerprint, clearRecords, deleteBook, saveImportedBook, storedAudio, storedAudioIds } from './db';
 import { checkAudioFile } from './imports';
 import { confirmedSeek } from './seek-result';
 import { chapterWindow } from './chapter';
 import type { Book, Session } from './types';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const audio = $<HTMLAudioElement>('audio'), strength = $<HTMLSelectElement>('strength'), speed = $<HTMLSelectElement>('speed'), seekStep = $<HTMLSelectElement>('seek-step'), theme = $<HTMLSelectElement>('theme');
+const audio = $<HTMLAudioElement>('audio'), strength = $<HTMLSelectElement>('strength'), speed = $<HTMLSelectElement>('speed'), seekStep = $<HTMLSelectElement>('seek-step'), theme = $<HTMLSelectElement>('theme'), accent = $<HTMLSelectElement>('accent');
 const seek = $<HTMLInputElement>('seek');
 const chaptersDialog = $<HTMLDialogElement>('chapters-dialog');
 $('show-chapters').onclick = () => chaptersDialog.showModal();
@@ -124,10 +127,14 @@ function analysisFailed(phase: string, message: string) {
 }
 let seekSeconds = Number(localStorage.getItem('still-seek-seconds') || 30);
 const savedTheme = localStorage.getItem('still-theme') || 'system';
+const savedAccent = localStorage.getItem('still-accent') || 'green';
 seekStep.value = String([15, 30, 45, 60].includes(seekSeconds) ? seekSeconds : 30);
 theme.value = savedTheme;
+accent.value = savedAccent;
 function applyTheme(value: string) { document.documentElement.dataset.theme = value === 'system' ? '' : value; }
+function applyAccent(value: string) { document.documentElement.dataset.accent = value; }
 applyTheme(savedTheme);
+applyAccent(savedAccent);
 const time = (n: number) => { n = Math.max(0, Math.floor(n || 0)); return n >= 3600 ? `${Math.floor(n/3600)}:${String(Math.floor(n%3600/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}` : `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`; };
 function say(message: string, persistent = false) { clearTimeout(toastTimer); $('message').textContent = message; if (!persistent) toastTimer = window.setTimeout(() => $('message').textContent = '', 9000); }
 function fail(e: unknown) { say(e instanceof Error ? e.message : String(e), true); }
@@ -176,6 +183,7 @@ function renderBook() {
   $('player-title').textContent = current.title;
   strength.value = current.strength; speed.value = String(current.rate); seekStep.value = String(seekSeconds);
   $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`;
+  $<HTMLButtonElement>('prev-chapter').disabled = current.chapters.length === 0; $<HTMLButtonElement>('next-chapter').disabled = current.chapters.length < 2;
   const list = $('chapters'); list.replaceChildren();
   for (const ch of current.chapters) {
     const li = document.createElement('li'), b = document.createElement('button'), title = document.createElement('span'), stamp = document.createElement('time');
@@ -197,16 +205,25 @@ async function renderLibrary() {
   const ul = $('library'); ul.replaceChildren();
   for (const b of books) {
     const li = document.createElement('li');
-    const button = document.createElement('button');
+    const row = document.createElement('div'); row.className = 'book-row';
+    const button = document.createElement('button'); button.className = 'book-open';
     const available = audioIds.has(b.id) || sessionFiles.has(b.id);
-    button.textContent = `${b.title} · ${time(b.position)} · ${available ? 'Continue listening' : 'Select file once to save locally'}`;
+    if (b.cover) { const image = document.createElement('img'); image.src = `data:${b.cover.mime};base64,${b.cover.data}`; image.alt = ''; image.className = 'book-cover'; button.append(image); }
+    const title = document.createElement('span'); title.textContent = b.title; title.className = 'book-title'; button.append(title);
     button.onclick = () => {
       if (!available) {
         say(`Choose ${b.filename} once to save it for future listening.`, true);
         $<HTMLInputElement>('file').click();
       } else void openLibraryBook(b).catch(fail);
     };
-    li.append(button);
+    const menu = document.createElement('details'); menu.className = 'book-menu';
+    const summary = document.createElement('summary'); summary.textContent = '•••'; summary.setAttribute('aria-label', `Actions for ${b.title}`); menu.append(summary);
+    const actions = document.createElement('div'); actions.className = 'book-actions';
+    const reset = document.createElement('button'); reset.textContent = 'Reset position'; reset.onclick = () => { b.position = 0; void put('books', b).then(renderLibrary); };
+    const remove = document.createElement('button'); remove.textContent = 'Remove from library'; remove.onclick = async () => { if (!confirm(`Remove “${b.title}” and its local audio from Still?`)) return; await deleteBook(b.id); if (current?.id === b.id) { current = null; audio.pause(); audio.removeAttribute('src'); audio.load(); } await renderLibrary(); };
+    const details = document.createElement('button'); details.textContent = 'Details'; details.onclick = () => alert(`${b.title}\n${b.filename}\n${time(b.duration)} · ${b.chapters.length} chapters`);
+    const share = document.createElement('button'); share.textContent = 'Share'; share.disabled = true; share.title = 'Sharing is planned for a future release';
+    actions.append(reset, remove, details, share); menu.append(actions); row.append(button, menu); li.append(row);
     ul.append(li);
   }
   if (!books.length) ul.textContent = 'No book records yet.';
@@ -287,6 +304,7 @@ async function loadFile(selected: File, importAudio = true) {
         if (ownGeneration !== generation || !current || worker !== metaWorker) return;
         if (data.type === 'metadata') {
           current.title = data.title; current.chapters = data.chapters; current.codec = data.codec; current.container = data.container;
+          if (data.cover) { const bytes = new Uint8Array(data.cover.data); let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte); current.cover = { mime: data.cover.mime, data: btoa(binary) }; }
           if (data.duration > 0) current.duration = data.duration;
           metaWorker.terminate(); worker = null; renderBook(); void saveBook().then(renderLibrary);
           say(storageWarning || `Book opened locally (${current.codec || 'MPEG-4 audio'}). Analyse it to enable quiet skipping.`, !!storageWarning);
@@ -347,7 +365,18 @@ $('analyse').onclick = () => {
 };
 $('cancel').onclick = () => { stage = 'Analysis stopped'; stopWorker(); say('Analysis stopped. Completed checkpoints are saved.'); };
 function jump(to: number) { if (!current || !Number.isFinite(audio.duration)) return; event('manual-seek', { to }); seekingBySkip = false; audio.currentTime = Math.max(0, Math.min(audio.duration, to)); recordProgress(); }
+function chapterIndex() {
+  if (!current?.chapters.length) return -1;
+  let index = 0; for (let i = 0; i < current.chapters.length; i++) if (current.chapters[i].start <= audio.currentTime) index = i;
+  return index;
+}
+function jumpChapter(direction: -1 | 1) {
+  const index = chapterIndex(); if (index < 0 || !current) return;
+  if (direction < 0) jump(current.chapters[index - 1]?.start ?? current.chapters[index].start);
+  else if (current.chapters[index + 1]) jump(current.chapters[index + 1].start);
+}
 $('back').onclick = () => jump(audio.currentTime - seekSeconds); $('forward').onclick = () => jump(audio.currentTime + seekSeconds);
+$('prev-chapter').onclick = () => jumpChapter(-1); $('next-chapter').onclick = () => jumpChapter(1);
 seek.oninput = () => { scrubbing = true; };
 seek.onchange = () => {
   const target = displayedChapterStart + Number(seek.value);
@@ -365,6 +394,7 @@ strength.onchange = () => {
 $('prepare-quiet').onclick = () => $('analyse').click();
 seekStep.onchange = () => { seekSeconds = Number(seekStep.value); localStorage.setItem('still-seek-seconds', String(seekSeconds)); $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`; event('seek-step', { value: seekSeconds }); };
 theme.onchange = () => { localStorage.setItem('still-theme', theme.value); applyTheme(theme.value); };
+accent.onchange = () => { localStorage.setItem('still-accent', accent.value); applyAccent(accent.value); };
 audio.onloadedmetadata = () => {
   if (!current) return;
   sourceReady = true;
@@ -418,7 +448,7 @@ function tick() {
     if (target !== null && target < audio.duration) {
       requested++; pending = { from: audio.currentTime, target }; trace('skip-request', pending);
       if (session && !session.ended) { session.skipped++; if (document.hidden) session.hiddenSkips++; }
-      seekingBySkip = true; skipRequestAt = now; audio.currentTime = target;
+      seekingBySkip = true; skipRequestAt = now; audio.volume = 0; audio.currentTime = target;
     }
   }
   if (now - lastSaved > 1000) { lastSaved = now; recordProgress(); }
@@ -428,15 +458,17 @@ function tick() {
 audio.ontimeupdate = tick;
 window.setInterval(tick, 25);
 audio.onseeked = () => {
+  const skipped = seekingBySkip && !!pending;
   if (seekingBySkip && pending) {
     const ok = confirmedSeek(pending.from, pending.target, audio.currentTime);
     if (ok) completed++; else missed++;
     trace(ok ? 'skip-confirmed' : 'skip-missed', { ...pending, actual: audio.currentTime });
   } else event('seek-complete');
+  if (skipped) { const started = performance.now(); const fade = () => { audio.volume = Math.min(1, (performance.now() - started) / 90); if (audio.volume < 1) requestAnimationFrame(fade); }; requestAnimationFrame(fade); }
   pending = null; seekingBySkip = false;
 };
-audio.onplay = () => { $('play').textContent = 'Ⅱ'; $('play').setAttribute('aria-label', 'Pause'); lastTick = performance.now(); event('play'); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; };
-audio.onpause = () => { $('play').textContent = '▶'; $('play').setAttribute('aria-label', 'Play'); lastTick = 0; recordProgress(); event('pause'); void saveSession(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; };
+audio.onplay = () => { $('play').classList.add('is-playing'); $('play').setAttribute('aria-label', 'Pause'); lastTick = performance.now(); event('play'); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; };
+audio.onpause = () => { $('play').classList.remove('is-playing'); $('play').setAttribute('aria-label', 'Play'); lastTick = 0; recordProgress(); event('pause'); void saveSession(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; };
 audio.onerror = () => { event('audio-error', { code: audio.error?.code }); fail(`Playback failed (media error ${audio.error?.code ?? 'unknown'}). This file/browser combination needs investigation.`); };
 for (const name of ['waiting','stalled','ended','ratechange','playing']) audio.addEventListener(name, () => event(name));
 document.addEventListener('visibilitychange', () => { event('visibility'); recordProgress(); void saveSession(); });
@@ -445,8 +477,8 @@ if ('mediaSession' in navigator) {
   const actions: [MediaSessionAction, MediaSessionActionHandler][] = [
     ['play', () => { event('remote-play'); void audio.play().catch(fail); }], ['pause', () => { event('remote-pause'); audio.pause(); }],
     ['seekbackward', d => jump(audio.currentTime - (d.seekOffset || seekSeconds))], ['seekforward', d => jump(audio.currentTime + (d.seekOffset || seekSeconds))], ['seekto', d => { if (d.seekTime !== undefined) jump(d.seekTime); }],
-    ['previoustrack', () => jump(audio.currentTime - seekSeconds)],
-    ['nexttrack', () => jump(audio.currentTime + seekSeconds)]
+    ['previoustrack', () => jumpChapter(-1)],
+    ['nexttrack', () => jumpChapter(1)]
   ];
   for (const [action, fn] of actions) try { navigator.mediaSession.setActionHandler(action, fn); } catch { /* Unsupported OS action. */ }
 }

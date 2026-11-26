@@ -14,9 +14,11 @@ self.onmessage = async ({ data }) => {
   try {
     const file = data.file as File;
     if (data.type === 'inspect') {
-      const meta = await parseBlob(file, { includeChapters: true, skipCovers: true, duration: false, maxChapterCount: 5000 });
+      const meta = await parseBlob(file, { includeChapters: true, skipCovers: false, duration: false, maxChapterCount: 5000 });
       const chapters: Chapter[] = (meta.format.chapters ?? []).map((c, i) => ({ title: c.title || `Chapter ${i + 1}`, start: c.start / (c.timeScale ?? 1) })).filter(c => Number.isFinite(c.start) && c.start >= 0).sort((a,b) => a.start-b.start);
-      self.postMessage({ type: 'metadata', title: meta.common.title || file.name, duration: meta.format.duration || 0, chapters, codec: meta.format.codec || 'Unknown', container: meta.format.container || 'Unknown' });
+      const picture = meta.common.picture?.[0];
+      const cover = picture ? { mime: picture.format, data: picture.data.slice().buffer } : undefined;
+      self.postMessage({ type: 'metadata', title: meta.common.title || file.name, duration: meta.format.duration || 0, chapters, codec: meta.format.codec || 'Unknown', container: meta.format.container || 'Unknown', cover });
     } else {
       stage('container');
       input = new Input({ source: new BlobSource(file), formats: [MP4] });

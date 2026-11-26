@@ -4,7 +4,8 @@ import { createHash } from 'node:crypto';
 let html = await readFile('dist/index.html', 'utf8');
 const styles = [...html.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
 for (const [tag, path] of styles) {
-  const css = await readFile(`dist/${path.replace(/^\.\//, '')}`, 'utf8');
+  const relativePath = path.replace(/^\.\//, '').replace(/^\/still-audiobook-player\//, '');
+  const css = await readFile(`dist/${relativePath}`, 'utf8');
   const digest = createHash('sha256').update(css).digest('base64');
   html = html.replace(tag, `<style>${css}</style>`);
   html = html.replace("style-src 'self'", `style-src 'self' 'sha256-${digest}'`);

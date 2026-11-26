@@ -87,8 +87,15 @@ h1, h2, .brand { font-family: inherit; letter-spacing: -0.6px; }
 .buttons .play { display: grid; place-items: center; }
 .play-symbol { display: block; width: 0; height: 0; margin-left: 4px; border-top: 11px solid transparent; border-bottom: 11px solid transparent; border-left: 16px solid currentColor; }
 .play.is-playing .play-symbol { width: 15px; height: 20px; margin-left: 0; border: 0; background: linear-gradient(90deg, currentColor 0 4px, transparent 4px 10px, currentColor 10px 14px); }
-#clear { margin-top: 18px; }
+#clear { width: 100%; margin-top: 18px; }
 html[data-accent=purple] { --accent: #6b4aa1; } html[data-accent=blue] { --accent: #2563a8; } html[data-accent=turquoise] { --accent: #087f83; } html[data-accent=aqua] { --accent: #167f9d; } html[data-accent=grey] { --accent: #5b6470; } html[data-accent=green] { --accent: #315e47; }
 html[data-accent] .primary, html[data-accent] .page-navigation a[aria-current=page] { background: var(--accent); border-color: var(--accent); }
+html[data-accent] .brand, html[data-accent] .eyebrow, html[data-accent] label, html[data-accent] .book-menu summary { color: var(--accent); }
+html[data-accent] button, html[data-accent] .file-button, html[data-accent] select, html[data-accent] textarea { border-color: color-mix(in srgb, var(--accent) 35%, #dce5df); }
+html[data-accent] .file-button, html[data-accent] .analysis-box { background: color-mix(in srgb, var(--accent) 8%, white); }
 html[data-accent] input[type=range], html[data-accent] progress { accent-color: var(--accent); }
+html[data-accent] .dot, html[data-accent] progress::-webkit-progress-value { background: var(--accent); }
+html[data-accent] button:focus-visible, html[data-accent] select:focus-visible, html[data-accent] textarea:focus-visible { outline-color: color-mix(in srgb, var(--accent) 70%, white); }
+#about h2 { font-size: 16px; line-height: 1.35; letter-spacing: 0; margin-top: 18px; }
+#about .card > .tiny { margin: 0 0 10px; }
 html[data-theme=dark] .book-actions { background: #192421; border-color: #30423a; }

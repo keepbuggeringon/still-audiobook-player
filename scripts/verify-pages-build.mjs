@@ -16,6 +16,6 @@ if (manifest.scope !== '/still-audiobook-player/') {
   throw new Error(`Unexpected manifest scope: ${manifest.scope}`);
 }
 
-const required = ['manifest.webmanifest', 'icon.svg', 'sw.js'];
+const required = ['manifest.webmanifest', 'icon.svg', 'apple-touch-icon.png', 'sw.js'];
 for (const path of required) await access(resolve(root, path));
 console.log(`Pages build verified: ${required.join(', ')}`);

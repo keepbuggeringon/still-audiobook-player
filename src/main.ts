@@ -19,13 +19,10 @@ for (const name of ['player', 'library', 'settings', 'about']) {
 }
 document.querySelector('header')!.append(navigation);
 const libraryView = views.get('library')!;
-const libraryHeading = document.createElement('h1');
-libraryHeading.textContent = 'Your library';
 const addBook = document.createElement('button'); addBook.className = 'add-book'; addBook.textContent = '+'; addBook.setAttribute('aria-label', 'Add audiobook');
-const libraryTitle = document.createElement('div'); libraryTitle.className = 'library-title'; libraryTitle.append(libraryHeading, addBook); libraryView.append(libraryTitle);
+const libraryTitle = document.createElement('div'); libraryTitle.className = 'library-title'; libraryTitle.append(addBook); libraryView.append(libraryTitle);
 const fileButton = document.querySelector('.file-button') as HTMLElement; const fileInput = document.getElementById('file') as HTMLInputElement; fileButton.hidden = true; addBook.onclick = () => fileInput.click();
 libraryView.append(fileButton);
-libraryView.append(document.getElementById('file-help')!);
 libraryView.append(document.querySelector('.small')!);
 const libraryDetails = document.getElementById('library')!.closest('details')!;
 libraryDetails.open = true;
@@ -33,18 +30,15 @@ libraryDetails.querySelector('summary')!.textContent = 'Your books';
 document.getElementById('clear')!.textContent = 'Remove local library';
 views.get('player')!.append(document.querySelector('.player')!);
 const settingsView = views.get('settings')!;
-const settingsHeading = document.createElement('h1');
-settingsHeading.textContent = 'Settings';
-settingsView.append(settingsHeading, document.querySelector('.settings-row')!);
+settingsView.append(document.querySelector('.settings-row')!);
 settingsView.append(document.getElementById('clear')!);
 const playerControls = document.createElement('div');
 playerControls.className = 'settings-row';
 playerControls.append(document.getElementById('speed')!.closest('label')!, document.getElementById('strength')!.closest('label')!);
 document.querySelector('.transport')!.after(playerControls);
-const aboutHeading = document.createElement('h1');
-aboutHeading.textContent = 'About Still';
 const aboutCard = document.createElement('section');
 aboutCard.className = 'card';
+views.get('about')!.id = 'about';
 for (const [title, description] of [
   ['Quiet skipping', 'Analysis finds pauses locally. Playback jumps when it reaches a detected pause.'],
   ['Off', 'Play every pause at its original length.'],
@@ -61,7 +55,8 @@ for (const [title, description] of [
   paragraph.textContent = description;
   aboutCard.append(heading, paragraph);
 }
-views.get('about')!.append(aboutHeading, aboutCard);
+aboutCard.append(document.getElementById('file-help')!);
+views.get('about')!.append(aboutCard);
 const diagnostics = document.createElement('details');
 const diagnosticsTitle = document.createElement('summary');
 diagnosticsTitle.textContent = 'Diagnostics and listening tests';

@@ -3,7 +3,7 @@ export type Strength = 'off' | 'conservative' | 'balanced' | 'strong';
 export const profiles = {
   conservative: { db: -48, minimum: 1.2, padding: .30 },
   balanced: { db: -43, minimum: .9, padding: .22 },
-  strong: { db: -38, minimum: .65, padding: .16 },
+  strong: { db: -35, minimum: .30, padding: .02 },
 } as const;
 export type Maps = Record<Exclude<Strength, 'off'>, Interval[]>;
 export const emptyMaps = (): Maps => ({ conservative: [], balanced: [], strong: [] });
@@ -57,7 +57,7 @@ export class QuietDetector {
 
 export function skipTarget(maps: Maps, strength: Strength, time: number): number | null {
   if (strength === 'off') return null;
-  const list = maps[strength], pad = strength === 'strong' ? .04 : profiles[strength].padding;
+  const list = maps[strength], pad = profiles[strength].padding;
   let lo = 0, hi = list.length;
   while (lo < hi) { const mid = (lo + hi) >>> 1; if (list[mid][1] <= time) lo = mid + 1; else hi = mid; }
   const interval = list[lo];

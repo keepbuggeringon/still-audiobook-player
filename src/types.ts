@@ -1,6 +1,7 @@
 import type { Maps, Strength } from './analysis';
 export interface Chapter { title: string; start: number }
 export interface Book {
+  analysisVersion?: number;
   analysisError?: string;
   id: string; title: string; filename: string; size: number; duration: number;
   chapters: Chapter[]; maps: Maps; analyzedUntil: number; complete: boolean;

@@ -15,6 +15,17 @@ test('retains speech and short pauses; detects long quiet spans across buffer bo
 test('opposite stereo channels cannot cancel into silence',()=>{
   assert.deepEqual(feed(new QuietDetector(),[{seconds:3,value:.1}],333,true).conservative,[]);
 });
+test('Strong detects short room-tone pauses and jumps at their start', () => {
+  const maps = feed(new QuietDetector(), [
+    { seconds: 1, value: .1 },
+    { seconds: .4, value: .015 },
+    { seconds: 1, value: .1 },
+  ]);
+  assert.equal(maps.strong.length, 1);
+  assert.equal(maps.balanced.length, 0);
+  const target = skipTarget(maps, 'strong', maps.strong[0][0]);
+  assert.ok(target !== null && Math.abs(target - 1.38) < .021);
+});
 test('whisper-like low volume is preserved by conservative setting',()=>{
   const m=feed(new QuietDetector(),[{seconds:3,value:.008}]); // about -42 dBFS
   assert.equal(m.conservative.length,0);assert.equal(m.balanced.length,0);assert.equal(m.strong.length,1);

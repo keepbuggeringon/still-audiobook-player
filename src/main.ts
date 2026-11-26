@@ -7,7 +7,7 @@ const navigation = document.createElement('nav');
 navigation.className = 'page-navigation';
 navigation.setAttribute('aria-label', 'Main navigation');
 const views = new Map<string, HTMLElement>();
-for (const name of ['library', 'player', 'settings']) {
+for (const name of ['library', 'player', 'settings', 'about']) {
   const link = document.createElement('a');
   link.href = `#/${name}`;
   link.textContent = name[0].toUpperCase() + name.slice(1);
@@ -29,6 +29,31 @@ const settingsView = views.get('settings')!;
 const settingsHeading = document.createElement('h1');
 settingsHeading.textContent = 'Settings';
 settingsView.append(settingsHeading, document.querySelector('.settings-row')!);
+const playerControls = document.createElement('div');
+playerControls.className = 'settings-row';
+playerControls.append(document.getElementById('speed')!.closest('label')!, document.getElementById('strength')!.closest('label')!);
+document.querySelector('.transport')!.after(playerControls);
+const aboutHeading = document.createElement('h1');
+aboutHeading.textContent = 'About Still';
+const aboutCard = document.createElement('section');
+aboutCard.className = 'card';
+for (const [title, description] of [
+  ['Quiet skipping', 'Analysis finds pauses locally. Playback jumps when it reaches a detected pause.'],
+  ['Off', 'Play every pause at its original length.'],
+  ['Conservative', 'Skip very quiet pauses lasting at least 1.2 seconds. Leave about 0.30 seconds before the next sound.'],
+  ['Balanced', 'Include more background noise and pauses lasting at least 0.9 seconds. Leave about 0.22 seconds before the next sound.'],
+  ['Strong', 'Skip pauses lasting at least 0.30 seconds, including louder room tone. Leave about 0.02 seconds before the next sound. This can cut breaths and softly spoken words. Choose a gentler level if you hear clipped speech.'],
+  ['Updating analysis', 'For a previously analysed book, choose Update pause analysis to enable the new Strong detection. Keep the app visible during analysis.'],
+  ['Time remaining', 'Chapter position uses the original recording timeline. Remaining times account for playback speed and are estimates before quiet skipping. Books without chapter metadata show unavailable chapter times.'],
+  ['On your device', 'Audio and analysis stay on this device. Background quiet skipping is still being tested on iPhone.']
+]) {
+  const heading = document.createElement('h2');
+  heading.textContent = title;
+  const paragraph = document.createElement('p');
+  paragraph.textContent = description;
+  aboutCard.append(heading, paragraph);
+}
+views.get('about')!.append(aboutHeading, aboutCard);
 const diagnostics = document.createElement('details');
 const diagnosticsTitle = document.createElement('summary');
 diagnosticsTitle.textContent = 'Diagnostics and listening tests';
@@ -60,7 +85,7 @@ let current: Book | null = null, file: File | null = null, sourceUrl = '', synth
 let worker: Worker | null = null, runId = 0, busy = false, books: Book[] = [], session: Session | null = null;
 let lastTick = 0, lastSaved = 0, lastSessionSaved = 0, seekingBySkip = false, skipRequestAt = 0;
 let generation = 0, toastTimer = 0, sourceReady = false;
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 let stage = 'Choose a book', decoder = 'untested';
 let requested = 0, completed = 0, missed = 0;
 let pending: { from: number; target: number } | null = null;
@@ -112,8 +137,8 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
   $('analysis-percent').textContent = current.complete ? 'Ready' : `${Math.round(fraction*100)}%`;
   const count = current.maps[strength.value === 'off' ? 'conservative' : strength.value as keyof Maps].length;
   $('analysis-status').textContent = synthetic ? 'Known pauses in generated test audio.' : `${count.toLocaleString()} quiet intervals · ${time(progress)} analysed. ${current.complete ? 'Ready for playback.' : 'Complete analysis to enable quiet skipping.'}`;
-  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || current.complete;
-  $('analyse').textContent = current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
+  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || (current.complete && current.analysisVersion === 2);
+  $('analyse').textContent = current.analysisVersion !== 2 && current.analyzedUntil > 0 ? 'Update pause analysis' : current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
   $('cancel').hidden = !worker;
   strength.disabled = !!current.analysisError || !current.complete;
   if (current.analysisError) $('analysis-percent').textContent = 'Failed';
@@ -136,6 +161,7 @@ function renderBook() {
   }
   if (!current.chapters.length) { const li = document.createElement('li'); li.textContent = synthetic ? 'No chapters in the generated test.' : 'No embedded chapters found. Record this as a compatibility issue if the source has chapters.'; list.append(li); }
   renderAnalysis();
+  renderTiming();
 }
 function renderMetrics() {
   $('skips').textContent = String(session?.skipped || 0); $('hidden-skips').textContent = String(session?.hiddenSkips || 0);
@@ -205,6 +231,12 @@ $('demo').onclick = () => {
 };
 $('analyse').onclick = () => {
   if (!file || !current || worker || synthetic) return;
+  if (current.analysisVersion !== 2) {
+    current.maps = emptyMaps();
+    current.analyzedUntil = 0;
+    current.complete = false;
+    current.analysisVersion = 2;
+  }
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = w; const run = ++runId, book = current;
   let first = true; const began = performance.now();
   delete book.analysisError; stage = 'Starting analysis worker'; trace('analysis-start');
@@ -241,7 +273,7 @@ function jump(to: number) { if (!current || !Number.isFinite(audio.duration)) re
 $('back').onclick = () => jump(audio.currentTime - seekSeconds); $('forward').onclick = () => jump(audio.currentTime + seekSeconds);
 seek.onchange = () => jump(Number(seek.value));
 $('play').onclick = () => { if (audio.paused) void audio.play().catch(fail); else audio.pause(); };
-speed.onchange = () => { audio.playbackRate = Number(speed.value); recordProgress(); event('speed', { value: audio.playbackRate }); };
+speed.onchange = () => { audio.playbackRate = Number(speed.value); recordProgress(); renderTiming(); event('speed', { value: audio.playbackRate }); };
 strength.onchange = () => { recordProgress(); renderAnalysis(); event('strength', { value: strength.value }); };
 seekStep.onchange = () => { seekSeconds = Number(seekStep.value); localStorage.setItem('still-seek-seconds', String(seekSeconds)); $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`; event('seek-step', { value: seekSeconds }); };
 theme.onchange = () => { localStorage.setItem('still-theme', theme.value); applyTheme(theme.value); };
@@ -256,6 +288,31 @@ audio.onloadedmetadata = () => {
   }
   renderAnalysis();
 };
+function renderTiming() {
+  const position = audio.currentTime || 0;
+  const duration = Number.isFinite(audio.duration) ? audio.duration : current?.duration || 0;
+  const rate = audio.playbackRate || 1;
+  $('elapsed').textContent = time(position);
+  $('book-left').textContent = current ? time((duration - position) / rate) : '—';
+  const chapters = current?.chapters || [];
+  let index = chapters.length - 1;
+  while (index >= 0 && chapters[index].start > position) index--;
+  if (index < 0) {
+    $('current-chapter').textContent = 'Chapter unavailable';
+    $('chapter-elapsed').textContent = '—';
+    $('chapter-left').textContent = '—';
+    return;
+  }
+  const chapter = chapters[index];
+  const end = Math.min(duration, chapters[index + 1]?.start ?? duration);
+  $('current-chapter').textContent = chapter.title;
+  $('chapter-elapsed').textContent = time(position - chapter.start);
+  $('chapter-left').textContent = time((end - position) / rate);
+}
+audio.addEventListener('loadedmetadata', renderTiming);
+audio.addEventListener('timeupdate', renderTiming);
+audio.addEventListener('seeked', renderTiming);
+audio.addEventListener('ratechange', renderTiming);
 function tick() {
   if (audio.paused || !current || audio.readyState < 2) return;
   const now = performance.now();
@@ -275,7 +332,7 @@ function tick() {
   }
   if (now - lastSaved > 5000) { lastSaved = now; recordProgress(); }
   if (now - lastSessionSaved > 10000) { lastSessionSaved = now; void saveSession(); }
-  if (!document.hidden) { seek.value = String(audio.currentTime); $('elapsed').textContent = time(audio.currentTime); renderMetrics(); }
+  if (!document.hidden) { seek.value = String(audio.currentTime); renderTiming(); renderMetrics(); }
 }
 audio.ontimeupdate = tick;
 window.setInterval(tick, 25);

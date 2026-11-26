@@ -25,6 +25,15 @@
           <div class="settings-row"><label>Speed<select id="speed"><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Seek buttons<select id="seek-step"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="45">45 seconds</option><option value="60">60 seconds</option></select></label><label>Quiet skipping<select id="strength"><option value="off">Off</option><option value="conservative" selected>Conservative</option><option value="balanced">Balanced</option><option value="strong">Strong</option></select></label><label>Appearance<select id="theme"><option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
           <div class="analysis-box"><div class="card-top"><strong>Pause analysis</strong><span id="analysis-percent">Not started</span></div><progress id="analysis-progress" max="1" value="0"></progress><p id="analysis-status" class="tiny">Only timestamps are saved. Analysis may pause when the app is hidden.</p><div class="inline"><button id="analyse" disabled>Analyse book</button><button id="cancel" hidden>Stop analysis</button></div></div>
           <details id="chapters-panel"><summary>Chapters <span id="chapter-count">0</span></summary><ol id="chapters" class="chapters"></ol></details>
+          <section class="chapter-timing" aria-label="Listening time">
+            <p id="current-chapter">Chapter unavailable</p>
+            <dl class="timing-grid">
+              <div><dt>Into chapter</dt><dd id="chapter-elapsed">—</dd></div>
+              <div><dt>Chapter left</dt><dd id="chapter-left">—</dd></div>
+              <div><dt>Book left</dt><dd id="book-left">—</dd></div>
+            </dl>
+            <p class="tiny">Remaining time at your speed, before quiet skipping.</p>
+          </section>
           <audio id="audio" preload="metadata"></audio>
         </section>
         <div class="side">
@@ -43,7 +52,7 @@
         <details><summary>Recent diagnostic events</summary><pre id="diagnostic-events"></pre></details>
       </section>
       <p id="message" role="status" aria-live="polite"></p>
-      <footer>Build 0.3.0 · Background skipping is under test.</footer>
+      <footer>Build 0.4.0 · Background skipping is under test.</footer>
     </main>
   </div>
 </body>

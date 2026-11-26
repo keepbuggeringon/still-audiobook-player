@@ -2,6 +2,7 @@ import './style.css';
 import './dark.css';
 import { diagnosticSource, emptyMaps, skipTarget, type Strength, type Maps } from './analysis';
 import { all, put, fingerprint, clearRecords } from './db';
+import { checkAudioFile } from './imports';
 import type { Book, Session } from './types';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -90,7 +91,8 @@ async function loadFile(selected: File) {
   busy = true; const ownGeneration = ++generation;
   try {
     recordProgress(); endSession('source-changed'); stopWorker(); audio.pause();
-    if (!/\.(m4b|m4a)$/i.test(selected.name)) throw Error('Choose an M4B or M4A file for this experiment.');
+    const fileCheck = checkAudioFile(selected.name, selected.type);
+    if (!fileCheck.ok) throw Error(fileCheck.message);
     if (selected.size > 1.1e9) throw Error('Phase 1 is scoped to files up to approximately 1 GB. This file is larger.');
     if (!isSecureContext || !crypto.subtle) throw Error('Open the HTTPS test site. A plain HTTP network address cannot run the full offline/analysis test.');
     say('Reading the book’s local identity and chapters…', true);
@@ -107,7 +109,7 @@ async function loadFile(selected: File) {
           current.title = data.title; current.chapters = data.chapters; current.codec = data.codec;
           if (data.duration > 0) current.duration = data.duration;
           metaWorker.terminate(); worker = null; renderBook(); void saveBook().then(renderLibrary);
-          say('Book opened locally. Analyse it to enable quiet skipping.');
+          say(`Book opened locally (${current.codec || 'MPEG-4 audio'}). Analyse it to enable quiet skipping.`);
         } else if (data.type === 'error') { metaWorker.terminate(); worker = null; renderAnalysis(); fail(`Chapter inspection failed: ${data.message}`); }
       };
       metaWorker.onerror = () => { metaWorker.terminate(); worker = null; renderAnalysis(); fail('Metadata worker failed. Ordinary playback may still work; record this compatibility failure.'); };

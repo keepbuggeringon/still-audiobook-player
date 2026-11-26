@@ -298,7 +298,7 @@ async function loadFile(selected: File, importAudio = true) {
       void renderLibrary().catch(fail);
     }
     say(storageWarning || 'Book ready. Press Play to continue.', !!storageWarning);
-    if (!saved?.container) {
+    if (!saved?.container || !saved.cover) {
       const metaWorker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = metaWorker; renderAnalysis();
       metaWorker.onmessage = ({ data }) => {
         if (ownGeneration !== generation || !current || worker !== metaWorker) return;

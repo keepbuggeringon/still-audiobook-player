@@ -20,10 +20,9 @@ for (const name of ['player', 'library', 'settings', 'about']) {
 document.querySelector('header')!.append(navigation);
 const libraryView = views.get('library')!;
 const addBook = document.createElement('button'); addBook.className = 'add-book'; addBook.textContent = '+'; addBook.setAttribute('aria-label', 'Add audiobook');
-const libraryTitle = document.createElement('div'); libraryTitle.className = 'library-title'; const libraryLabel = document.createElement('span'); libraryLabel.textContent = 'Your books'; const libraryArrow = document.createElement('span'); libraryArrow.textContent = '›'; libraryArrow.className = 'library-arrow'; libraryTitle.append(libraryLabel, libraryArrow, addBook); libraryView.append(libraryTitle);
 const fileButton = document.querySelector('.file-button') as HTMLElement; const fileInput = document.getElementById('file') as HTMLInputElement; fileButton.hidden = true; addBook.onclick = () => fileInput.click();
 libraryView.append(fileButton);
-libraryView.append(document.querySelector('.small')!);
+const libraryCard = document.querySelector('.small')!; libraryCard.prepend(addBook); libraryView.append(libraryCard);
 const libraryDetails = document.getElementById('library')!.closest('details')!;
 libraryDetails.open = true;
 libraryDetails.querySelector('summary')!.textContent = 'Your books';

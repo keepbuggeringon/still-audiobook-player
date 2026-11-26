@@ -150,8 +150,15 @@ html[data-accent] button, html[data-accent] select, html[data-accent] textarea, 
 html[data-accent] .tiny, html[data-accent] .eyebrow, html[data-accent] .times, html[data-accent] .pill, html[data-accent] footer, html[data-accent] .page-navigation a, html[data-accent] .text-button { font-size: 12px; }
 html[data-accent] header, html[data-accent] .settings-row, html[data-accent] details, html[data-accent] .metrics, html[data-accent] #library li, html[data-accent] .chapters button { border-top-color: transparent; border-bottom-color: transparent; }
 html[data-accent] #message { background: var(--accent); color: var(--accent-contrast); }
-.library-title { justify-content: flex-start; }
 .page-view .small h2 { display: none; }
-.library-arrow { color: var(--muted-ink); font-size: 16px; margin-left: -6px; }
-.library-title .add-book { margin-left: auto; }
 #clear { width: 100%; text-align: left; }
+.page-view .small { position: relative; }
+.page-view .small .add-book { position: absolute; top: 12px; right: 12px; }
+
+#about .card { padding: 16px; margin: 0; }
+.page-view .times span { color: var(--muted-ink); }
+html[data-accent] .page-view details, html[data-accent] .page-view .test, html[data-accent] .page-view .diagnostics, html[data-accent] .page-view .analysis-box, html[data-accent] .page-view .metrics, html[data-accent] .page-view .field { background: var(--surface); color: var(--ink); }
+html[data-accent] .page-view .test > p, html[data-accent] .page-view .steps, html[data-accent] .page-view #diagnostic-status, html[data-accent] .page-view #file-diagnostics, html[data-accent] .page-view #seek-diagnostics, html[data-accent] .page-view .metrics span { color: var(--muted-ink); }
+html[data-accent] .page-view .metrics, html[data-accent] .page-view details, html[data-accent] .page-view .analysis-box { border-color: var(--line); }
+html[data-accent] .page-view .settings-row label, html[data-accent] .page-view .settings-row select, html[data-accent] .page-view .settings-clear summary, html[data-accent] .page-view .settings-clear button { font-size: 16px; }
+html[data-accent] .page-view .settings-row .tiny, html[data-accent] .page-view .settings-row .eyebrow { font-size: 12px; }

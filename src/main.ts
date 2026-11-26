@@ -17,7 +17,7 @@ for (const name of ['player', 'library', 'settings', 'about']) {
   views.set(name, view);
   document.querySelector('main')!.append(view);
 }
-document.querySelector('header')!.after(navigation);
+document.querySelector('header')!.append(navigation);
 const libraryView = views.get('library')!;
 const libraryHeading = document.createElement('h1');
 libraryHeading.textContent = 'Your library';
@@ -25,6 +25,10 @@ libraryView.append(libraryHeading);
 libraryView.append(document.querySelector('.file-button')!);
 libraryView.append(document.getElementById('file-help')!);
 libraryView.append(document.querySelector('.small')!);
+const libraryDetails = document.getElementById('library')!.closest('details')!;
+libraryDetails.open = true;
+libraryDetails.querySelector('summary')!.textContent = 'Your books';
+document.getElementById('clear')!.textContent = 'Remove local library';
 views.get('player')!.append(document.querySelector('.player')!);
 const chooseBook = document.createElement('a');
 chooseBook.href = '#/library';
@@ -47,10 +51,10 @@ for (const [title, description] of [
   ['Off', 'Play every pause at its original length.'],
   ['Conservative', 'Skip very quiet pauses lasting at least 1.2 seconds. Leave about 0.30 seconds before the next sound.'],
   ['Balanced', 'Include more background noise and pauses lasting at least 0.9 seconds. Leave about 0.22 seconds before the next sound.'],
-  ['Strong', 'Skip pauses lasting at least 0.15 seconds, including louder room tone. Leave about 0.01 seconds before the next sound. This can cut breaths and softly spoken words. Choose a gentler level if you hear clipped speech.'],
+  ['Strong', 'Skip quiet pauses lasting at least 0.45 seconds. Leave about 0.12 seconds before the next sound. This can still shorten breaths and very soft speech. Choose a gentler level if you hear clipped speech.'],
   ['Updating analysis', 'For a previously analysed book, choose Update pause analysis to enable the new Strong detection. Keep the app visible during analysis.'],
   ['Time remaining', 'Chapter position uses the original recording timeline. Remaining times account for playback speed and are estimates before quiet skipping. Books without chapter metadata show unavailable chapter times.'],
-  ['On your device', 'Audio and analysis stay on this device. Background quiet skipping is still being tested on iPhone.']
+  ['On your device', 'Imported audio, analysis, and listening positions are stored locally in this browser. Reopening restores your last book, ready for you to press Play. Local copies use device storage. Clearing browser website data removes this library. Background quiet skipping is still being tested on iPhone.']
 ]) {
   const heading = document.createElement('h2');
   heading.textContent = title;
@@ -78,7 +82,7 @@ function navigate() {
 window.addEventListener('hashchange', navigate);
 navigate();
 import { diagnosticSource, emptyMaps, skipTarget, type Strength, type Maps } from './analysis';
-import { all, put, fingerprint, clearRecords } from './db';
+import { all, put, fingerprint, clearRecords, saveImportedBook, storedAudio, storedAudioIds } from './db';
 import { checkAudioFile } from './imports';
 import { confirmedSeek } from './seek-result';
 import type { Book, Session } from './types';
@@ -90,7 +94,8 @@ let current: Book | null = null, file: File | null = null, sourceUrl = '', synth
 let worker: Worker | null = null, runId = 0, busy = false, books: Book[] = [], session: Session | null = null;
 let lastTick = 0, lastSaved = 0, lastSessionSaved = 0, seekingBySkip = false, skipRequestAt = 0;
 let generation = 0, toastTimer = 0, sourceReady = false;
-const VERSION = '0.4.1';
+const VERSION = '0.5.0';
+const sessionFiles = new Map<string, File>();
 let stage = 'Choose a book', decoder = 'untested';
 let requested = 0, completed = 0, missed = 0;
 let pending: { from: number; target: number } | null = null;
@@ -133,6 +138,12 @@ async function saveBook() { if (current && !synthetic) { current.updated = Date.
 function recordProgress() {
   if (!current || !sourceReady) return;
   current.position = audio.currentTime || 0; current.rate = audio.playbackRate; current.strength = strength.value as Strength;
+  if (!synthetic) {
+    try {
+      localStorage.setItem('still-last-book', current.id);
+      localStorage.setItem(`still-position-${current.id}`, JSON.stringify({ position: current.position, rate: current.rate, strength: current.strength }));
+    } catch { /* IndexedDB remains the primary progress store. */ }
+  }
   void saveBook();
 }
 function renderAnalysis(progress = current?.analyzedUntil || 0) {
@@ -142,8 +153,11 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
   $('analysis-percent').textContent = current.complete ? 'Ready' : `${Math.round(fraction*100)}%`;
   const count = current.maps[strength.value === 'off' ? 'conservative' : strength.value as keyof Maps].length;
   $('analysis-status').textContent = synthetic ? 'Known pauses in generated test audio.' : `${count.toLocaleString()} quiet intervals · ${time(progress)} analysed. ${current.complete ? 'Ready for playback.' : 'Complete analysis to enable quiet skipping.'}`;
-  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || (current.complete && current.analysisVersion === 3);
-  $('analyse').textContent = current.analysisVersion !== 3 && current.analyzedUntil > 0 ? 'Update pause analysis' : current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
+  if (!synthetic && current.complete && current.analysisVersion !== 4) {
+    $('analysis-status').textContent += ' Update pause analysis for the revised Strong level. Balanced is used for Strong until then.';
+  }
+  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || (current.complete && current.analysisVersion === 4);
+  $('analyse').textContent = current.analysisVersion !== 4 && current.analyzedUntil > 0 ? 'Update pause analysis' : current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
   $('cancel').hidden = !worker;
   strength.disabled = !!current.analysisError || !current.complete;
   if (current.analysisError) $('analysis-percent').textContent = 'Failed';
@@ -175,10 +189,35 @@ function renderMetrics() {
 }
 async function renderLibrary() {
   books = (await all<Book>('books')).sort((a,b) => b.updated-a.updated);
+  const audioIds = await storedAudioIds();
   const ul = $('library'); ul.replaceChildren();
-  for (const b of books) { const li = document.createElement('li'); li.textContent = `${b.title} · ${time(b.position)} · ${b.complete ? 'analysis ready' : `${time(b.analyzedUntil)} analysed`}`; ul.append(li); }
+  for (const b of books) {
+    const li = document.createElement('li');
+    const button = document.createElement('button');
+    const available = audioIds.has(b.id) || sessionFiles.has(b.id);
+    button.textContent = `${b.title} · ${time(b.position)} · ${available ? 'Continue listening' : 'Select file once to save locally'}`;
+    button.onclick = () => {
+      if (!available) {
+        say(`Choose ${b.filename} once to save it for future listening.`, true);
+        $<HTMLInputElement>('file').click();
+      } else void openLibraryBook(b).catch(fail);
+    };
+    li.append(button);
+    ul.append(li);
+  }
   if (!books.length) ul.textContent = 'No book records yet.';
-  $('storage').textContent = `Saved book records: ${(new Blob([JSON.stringify(books)]).size/1024).toFixed(1)} KB. No audiobook bytes stored by the app.`;
+  const savedBytes = books.filter(book => audioIds.has(book.id)).reduce((sum, book) => sum + book.size, 0);
+  $('storage').textContent = `${audioIds.size} books stored locally · ${(savedBytes / 1e6).toFixed(1)} MB of audio. Browser website data includes this library.`;
+}
+async function openLibraryBook(book: Book) {
+  if (busy) return;
+  const blob = sessionFiles.get(book.id) || await storedAudio(book.id);
+  if (!blob) {
+    say(`Choose ${book.filename} once to save it for future listening.`, true);
+    $<HTMLInputElement>('file').click();
+    return;
+  }
+  await loadFile(new File([blob], book.filename, { type: blob.type || 'audio/mp4' }), false);
 }
 function stopWorker() { runId++; worker?.terminate(); worker = null; renderAnalysis(); }
 function endSession(reason = 'user') {
@@ -194,11 +233,13 @@ function setSource(blob: Blob) {
   for (const id of ['play','back','forward','start-test']) $<HTMLButtonElement>(id).disabled = false;
   seek.disabled = false;
 }
-async function loadFile(selected: File) {
+async function loadFile(selected: File, importAudio = true) {
   if (busy) return;
   busy = true; const ownGeneration = ++generation;
+  let storageWarning = '';
   try {
     recordProgress(); endSession('source-changed'); stopWorker(); audio.pause();
+    sourceReady = false;
     const fileCheck = checkAudioFile(selected.name, selected.type);
     if (!fileCheck.ok) throw Error(fileCheck.message);
     if (selected.size > 1.1e9) throw Error('Phase 1 is scoped to files up to approximately 1 GB. This file is larger.');
@@ -208,7 +249,23 @@ async function loadFile(selected: File) {
     file = selected; synthetic = false;
     const saved = books.find(b => b.id === id);
     current = saved || { id, title: selected.name, filename: selected.name, size: selected.size, duration: 0, chapters: [], maps: emptyMaps(), analyzedUntil: 0, complete: false, position: 0, strength: 'conservative', rate: 1, updated: Date.now() };
+    try {
+      const progress = JSON.parse(localStorage.getItem(`still-position-${id}`) || 'null');
+      if (progress && Number.isFinite(progress.position) && progress.position >= 0) current.position = progress.position;
+    } catch { /* Use the IndexedDB position when a fast checkpoint is unavailable. */ }
+    sessionFiles.set(id, selected);
+    if (importAudio) {
+      try {
+        await saveImportedBook(id, selected, current);
+        if (navigator.storage?.persist) void navigator.storage.persist().catch(() => false);
+      } catch {
+        storageWarning = 'The book can play now, but browser storage could not save its audio. Check device space and select the file again to enable reopening.';
+      }
+    }
+    localStorage.setItem('still-last-book', id);
     renderBook(); setSource(selected);
+    await saveBook(); await renderLibrary();
+    location.hash = '/player';
     if (!saved?.container) {
       const metaWorker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = metaWorker; renderAnalysis();
       metaWorker.onmessage = ({ data }) => {
@@ -217,12 +274,12 @@ async function loadFile(selected: File) {
           current.title = data.title; current.chapters = data.chapters; current.codec = data.codec; current.container = data.container;
           if (data.duration > 0) current.duration = data.duration;
           metaWorker.terminate(); worker = null; renderBook(); void saveBook().then(renderLibrary);
-          say(`Book opened locally (${current.codec || 'MPEG-4 audio'}). Analyse it to enable quiet skipping.`);
+          say(storageWarning || `Book opened locally (${current.codec || 'MPEG-4 audio'}). Analyse it to enable quiet skipping.`, !!storageWarning);
         } else if (data.type === 'error') { stopWorker(); stage = 'Metadata inspection failed: ' + data.message; trace('metadata-error', data.message); renderAnalysis(); fail(stage); }
       };
       metaWorker.onerror = e => { if (worker === metaWorker) { stopWorker(); stage = 'Metadata inspection failed: ' + workerError(e); trace('metadata-error', workerError(e)); renderAnalysis(); fail(stage); } };
       metaWorker.postMessage({ type: 'inspect', file: selected });
-    } else { say('Saved analysis and progress reconnected to this file.'); }
+    } else { say(storageWarning || 'Book ready at your saved position. Press Play to continue.', !!storageWarning); }
   } catch (e) { fail(e); }
   finally { busy = false; }
 }
@@ -236,11 +293,11 @@ $('demo').onclick = () => {
 };
 $('analyse').onclick = () => {
   if (!file || !current || worker || synthetic) return;
-  if (current.analysisVersion !== 3) {
+  if (current.analysisVersion !== 4) {
     current.maps = emptyMaps();
     current.analyzedUntil = 0;
     current.complete = false;
-    current.analysisVersion = 3;
+    current.analysisVersion = 4;
   }
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = w; const run = ++runId, book = current;
   let first = true; const began = performance.now();
@@ -328,14 +385,15 @@ function tick() {
   lastTick = now;
   if (seekingBySkip && now - skipRequestAt > 5000) { missed++; trace('seek-timeout', pending); pending = null; seekingBySkip = false; }
   if (current.complete && !current.analysisError && !audio.seeking && !seekingBySkip) {
-    const target = skipTarget(current.maps, strength.value as Strength, audio.currentTime);
+    const selectedStrength = strength.value === 'strong' && !synthetic && current.analysisVersion !== 4 ? 'balanced' : strength.value as Strength;
+    const target = skipTarget(current.maps, selectedStrength, audio.currentTime);
     if (target !== null && target < audio.duration) {
       requested++; pending = { from: audio.currentTime, target }; trace('skip-request', pending);
       if (session && !session.ended) { session.skipped++; if (document.hidden) session.hiddenSkips++; }
       seekingBySkip = true; skipRequestAt = now; audio.currentTime = target;
     }
   }
-  if (now - lastSaved > 5000) { lastSaved = now; recordProgress(); }
+  if (now - lastSaved > 1000) { lastSaved = now; recordProgress(); }
   if (now - lastSessionSaved > 10000) { lastSessionSaved = now; void saveSession(); }
   if (!document.hidden) { seek.value = String(audio.currentTime); renderTiming(); renderMetrics(); }
 }
@@ -387,10 +445,13 @@ $('export').onclick = async () => {
   const a = document.createElement('a'); a.href=url; a.download='still-phase1-report.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),30000);
 };
 $('clear').onclick = async () => {
-  if (!confirm('Clear saved book analysis, progress, and test reports on this browser? Your original files are unaffected.')) return;
+  if (!confirm('Remove all locally imported audio, saved analysis, progress, and test reports from Still? Your original files are unaffected.')) return;
   stopWorker(); audio.pause(); generation++; session = null; current = null; file = null;
   if (sourceUrl) URL.revokeObjectURL(sourceUrl); sourceUrl=''; audio.removeAttribute('src'); audio.load();
-  await clearRecords(); location.reload();
+  await clearRecords();
+  localStorage.removeItem('still-last-book');
+  for (const key of Object.keys(localStorage)) if (key.startsWith('still-position-')) localStorage.removeItem(key);
+  location.reload();
 };
 $('capabilities').textContent = `Secure page: ${isSecureContext ? 'yes' : 'no'} · Audio decoder: ${'AudioDecoder' in globalThis ? 'available' : 'unavailable'} · Media controls: ${'mediaSession' in navigator ? 'available' : 'unavailable'}. Capability presence does not certify background behavior.`;
 $('decoder-test').onclick = async () => {
@@ -400,7 +461,18 @@ $('decoder-test').onclick = async () => {
     await loadFile(new File([await res.blob()], 'Still AAC test.m4b', { type: 'audio/mp4' }));
   } catch (error) { fail(error); }
 };
-void renderLibrary().catch(fail);
+const startupGeneration = generation;
+window.addEventListener('hashchange', () => {
+  recordProgress();
+  if (location.hash === '#/library') void renderLibrary().catch(fail);
+});
+void renderLibrary().then(async () => {
+  const lastId = localStorage.getItem('still-last-book');
+  const last = books.find(book => book.id === lastId);
+  if (last && !busy && generation === startupGeneration && (await storedAudioIds()).has(last.id)) {
+    if (!busy && generation === startupGeneration) await openLibraryBook(last);
+  }
+}).catch(fail);
 void all<Session>('sessions').then(sessions => {
   if (session) return;
   const last = sessions.sort((a,b)=>b.started-a.started)[0];

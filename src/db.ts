@@ -1,15 +1,50 @@
 const dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-  const r = indexedDB.open('quiet-reader-phase1', 1);
-  r.onupgradeneeded = () => { r.result.createObjectStore('books', { keyPath: 'id' }); r.result.createObjectStore('sessions', { keyPath: 'id' }); };
-  r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
+  const r = indexedDB.open('quiet-reader-phase1', 2);
+  r.onupgradeneeded = () => {
+    for (const name of ['books', 'sessions']) {
+      if (!r.result.objectStoreNames.contains(name)) r.result.createObjectStore(name, { keyPath: 'id' });
+    }
+    if (!r.result.objectStoreNames.contains('audio')) r.result.createObjectStore('audio');
+  };
+  r.onsuccess = () => {
+    r.result.onversionchange = () => r.result.close();
+    resolve(r.result);
+  };
+  r.onerror = () => reject(r.error);
 });
 export async function put(store: 'books' | 'sessions', value: unknown) {
-  // Only structured records are accepted; never save File, Blob, or PCM.
+  // Keep metadata lightweight. Audio has its own store and write path.
   const safe = JSON.parse(JSON.stringify(value));
   const db = await dbPromise;
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction(store, 'readwrite'); tx.objectStore(store).put(safe);
     tx.oncomplete = () => resolve(); tx.onabort = tx.onerror = () => reject(tx.error);
+  });
+}
+export async function saveImportedBook(id: string, file: Blob, book: unknown) {
+  const db = await dbPromise;
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['audio', 'books'], 'readwrite');
+    tx.objectStore('audio').put(file, id);
+    tx.objectStore('books').put(JSON.parse(JSON.stringify(book)));
+    tx.oncomplete = () => resolve();
+    tx.onabort = tx.onerror = () => reject(tx.error);
+  });
+}
+export async function storedAudio(id: string): Promise<Blob | undefined> {
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('audio').objectStore('audio').get(id);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+export async function storedAudioIds(): Promise<Set<string>> {
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('audio').objectStore('audio').getAllKeys();
+    request.onsuccess = () => resolve(new Set(request.result.map(String)));
+    request.onerror = () => reject(request.error);
   });
 }
 export async function all<T>(store: 'books' | 'sessions'): Promise<T[]> {
@@ -19,7 +54,8 @@ export async function all<T>(store: 'books' | 'sessions'): Promise<T[]> {
 export async function clearRecords() {
   const db = await dbPromise;
   return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(['books', 'sessions'], 'readwrite'); tx.objectStore('books').clear(); tx.objectStore('sessions').clear();
+    const tx = db.transaction(['books', 'sessions', 'audio'], 'readwrite');
+    for (const name of ['books', 'sessions', 'audio']) tx.objectStore(name).clear();
     tx.oncomplete = () => resolve(); tx.onabort = tx.onerror = () => reject(tx.error);
   });
 }

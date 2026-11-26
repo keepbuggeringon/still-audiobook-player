@@ -134,3 +134,15 @@ html[data-accent] .play, html[data-accent] .page-navigation a[aria-current=page]
 html[data-accent] .play:hover, html[data-accent] .page-navigation a[aria-current=page]:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
 html[data-accent] .status-ring { border-color: var(--accent); }
 html[data-accent] .book-cover { background: var(--surface-soft); }
+
+/* Keep the interface to two text scales and remove decorative divider rules. */
+html[data-accent] h1, html[data-accent] h2, html[data-accent] .player-heading h2, html[data-accent] .test h2, html[data-accent] .small h2, html[data-accent] .metrics strong { font-size: 16px; line-height: 1.35; letter-spacing: 0; }
+html[data-accent] button, html[data-accent] select, html[data-accent] textarea, html[data-accent] .book-title, html[data-accent] .current-chapter, html[data-accent] .library-title { font-size: 16px; }
+html[data-accent] .tiny, html[data-accent] .eyebrow, html[data-accent] .times, html[data-accent] .pill, html[data-accent] footer, html[data-accent] .page-navigation a, html[data-accent] .text-button { font-size: 12px; }
+html[data-accent] header, html[data-accent] .settings-row, html[data-accent] details, html[data-accent] .metrics, html[data-accent] #library li, html[data-accent] .chapters button { border-top-color: transparent; border-bottom-color: transparent; }
+html[data-accent] #message { background: var(--accent); color: var(--accent-contrast); }
+.library-title { justify-content: flex-start; }
+.page-view .small h2 { display: none; }
+.library-arrow { color: var(--muted-ink); font-size: 16px; margin-left: -6px; }
+.library-title .add-book { margin-left: auto; }
+#clear { width: 100%; text-align: left; }

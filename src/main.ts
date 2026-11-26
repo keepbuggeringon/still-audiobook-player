@@ -20,18 +20,18 @@ for (const name of ['player', 'library', 'settings', 'about']) {
 document.querySelector('header')!.append(navigation);
 const libraryView = views.get('library')!;
 const addBook = document.createElement('button'); addBook.className = 'add-book'; addBook.textContent = '+'; addBook.setAttribute('aria-label', 'Add audiobook');
-const libraryTitle = document.createElement('div'); libraryTitle.className = 'library-title'; libraryTitle.append(addBook); libraryView.append(libraryTitle);
+const libraryTitle = document.createElement('div'); libraryTitle.className = 'library-title'; const libraryLabel = document.createElement('span'); libraryLabel.textContent = 'Your books'; const libraryArrow = document.createElement('span'); libraryArrow.textContent = '›'; libraryArrow.className = 'library-arrow'; libraryTitle.append(libraryLabel, libraryArrow, addBook); libraryView.append(libraryTitle);
 const fileButton = document.querySelector('.file-button') as HTMLElement; const fileInput = document.getElementById('file') as HTMLInputElement; fileButton.hidden = true; addBook.onclick = () => fileInput.click();
 libraryView.append(fileButton);
 libraryView.append(document.querySelector('.small')!);
 const libraryDetails = document.getElementById('library')!.closest('details')!;
 libraryDetails.open = true;
 libraryDetails.querySelector('summary')!.textContent = 'Your books';
-document.getElementById('clear')!.textContent = 'Remove local library';
 views.get('player')!.append(document.querySelector('.player')!);
 const settingsView = views.get('settings')!;
 settingsView.append(document.querySelector('.settings-row')!);
-settingsView.append(document.getElementById('clear')!);
+const clearLibrary = document.createElement('button'); clearLibrary.id = 'clear'; clearLibrary.className = 'text-button'; clearLibrary.textContent = 'Remove local library'; settingsView.append(clearLibrary);
+const clearNotice = document.createElement('p'); clearNotice.className = 'tiny'; clearNotice.textContent = 'Are you sure? This cannot be undone.'; settingsView.append(clearNotice);
 const playerControls = document.createElement('div');
 playerControls.className = 'settings-row';
 playerControls.append(document.getElementById('speed')!.closest('label')!, document.getElementById('strength')!.closest('label')!);
@@ -57,6 +57,7 @@ for (const [title, description] of [
 }
 aboutCard.append(document.getElementById('file-help')!);
 views.get('about')!.append(aboutCard);
+const aboutStorage = document.createElement('p'); aboutStorage.id = 'about-storage'; aboutStorage.className = 'tiny'; aboutStorage.textContent = 'No books stored locally.'; views.get('about')!.append(aboutStorage);
 const diagnostics = document.createElement('details');
 const diagnosticsTitle = document.createElement('summary');
 diagnosticsTitle.textContent = 'Diagnostics and listening tests';
@@ -223,7 +224,8 @@ async function renderLibrary() {
   }
   if (!books.length) ul.textContent = 'No book records yet.';
   const savedBytes = books.filter(book => audioIds.has(book.id)).reduce((sum, book) => sum + book.size, 0);
-  $('storage').textContent = `${audioIds.size} books stored locally · ${(savedBytes / 1e6).toFixed(1)} MB of audio. Browser website data includes this library.`;
+  $('storage').textContent = `${audioIds.size} books · ${(savedBytes / 1e6).toFixed(1)} MB of audio`;
+  $('about-storage').textContent = `${audioIds.size} books stored locally · ${(savedBytes / 1e6).toFixed(1)} MB of audio data.`;
 }
 async function openLibraryBook(book: Book) {
   if (busy) return;

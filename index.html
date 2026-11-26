@@ -36,7 +36,7 @@
         </section>
         <div class="side">
           <section class="card test" aria-labelledby="test-title"><div class="card-top"><span class="eyebrow">THE QUESTION WE’RE TESTING</span><span class="status-ring"></span></div><h2 id="test-title">Does it keep skipping<br>when your screen locks?</h2><p>Start with a generated tone test. With skipping on, each four-second tone should be followed by a short pause. With skipping off, the pause lasts six seconds.</p><button id="demo" class="secondary">Load tone & silence test</button><p class="tiny">Generated on your phone. Loops every two minutes of source audio. Use a comfortable volume.</p><ol class="steps"><li>Listen unlocked for one minute.</li><li>Start a test session, then lock your screen.</li><li>Listen for at least an hour, then try another app and Bluetooth controls.</li><li>Return, stop the session, and record what you heard.</li></ol><div class="test-actions"><button id="start-test" class="primary" disabled>Start test session</button><button id="stop-test" hidden>Stop session</button></div><p id="session-status" class="tiny">Device result: not yet verified.</p><div class="metrics"><div><strong id="skips">0</strong><span>Skips requested</span></div><div><strong id="hidden-skips">0</strong><span>While hidden</span></div><div><strong id="gap">—</strong><span>Longest callback gap</span></div></div><label class="field">What did you hear?<select id="verdict"><option value="pending">Not tested yet</option><option value="heard-working">Short pauses continued throughout</option><option value="heard-failure">Long pauses or playback failure</option></select></label><label class="field">Test notes<textarea id="notes" rows="3" placeholder="Lock duration, other apps used, Bluetooth, unexpected pauses…"></textarea></label><button id="export" class="secondary">Download test report</button><p class="tiny">Reports contain device capabilities and event times. Book titles and filenames are omitted; your notes are included. Nothing is sent automatically.</p></section>
-          <section class="card small"><div class="card-top"><h2>On this device</h2><span id="offline" class="pill">Checking offline setup</span></div><p id="capabilities" class="tiny"></p><p id="storage" class="tiny">Only book records, pause timestamps, and test reports are retained.</p><details><summary>Remembered books</summary><ul id="library"></ul></details><button id="clear" class="text-button">Clear saved records</button></section>
+          <section class="card small"><div class="card-top"><h2>Your books</h2><span id="offline" hidden></span></div><p id="capabilities" class="tiny" hidden></p><p id="storage" class="tiny" hidden></p><details open><summary hidden>Your books</summary><ul id="library"></ul></details></section>
         </div>
       </div>
       <section class="card diagnostics" aria-labelledby="diagnostic-title">
@@ -50,7 +50,7 @@
         <details><summary>Recent diagnostic events</summary><pre id="diagnostic-events"></pre></details>
       </section>
       <p id="message" role="status" aria-live="polite"></p>
-      <footer>Build 0.6.0 · Background skipping is under test.</footer>
+      <footer></footer>
     </main>
   </div>
 </body>

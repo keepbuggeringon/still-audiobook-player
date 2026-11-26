@@ -16,24 +16,21 @@
       <section class="intro"><p class="eyebrow">YOUR BOOK. YOUR PHONE.</p><h1>A little less silence.<br>Stay in the story.</h1><p class="lede">A local listening experiment for iPhone. Open an original M4B, analyse its pauses, and test quiet skipping with the screen locked.</p><div class="privacy"><span class="dot"></span> Audio stays on this device · Originals stay untouched</div></section>
       <div class="layout">
         <section class="card player" aria-labelledby="player-title">
-          <div class="card-top"><span class="eyebrow">NOW LISTENING</span><span id="source-kind" class="pill">No file selected</span></div>
-          <h2 id="player-title">Bring your own book</h2><p id="book-info" class="muted">M4B · up to 1 GB · embedded chapters</p>
+          <div class="player-heading"><h2 id="player-title">No book selected</h2><button id="show-chapters" aria-label="Chapters" title="Chapters">☷</button></div>
           <label class="file-button">Choose an audiobook<input id="file" type="file" aria-describedby="file-help"></label>
           <p id="file-help" class="tiny">Browse all files to avoid iPhone file-type filtering. Choose an M4B, M4A, or MP4 audiobook. Protected files require a compatible authorised player.</p>
-          <p class="tiny">Imported books are saved on this device. Choose a book from Library to continue listening.</p>
-          <div class="transport"><input id="seek" type="range" min="0" max="1" value="0" step=".1" aria-label="Playback position" disabled><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div><div class="buttons"><button id="back" disabled aria-label="Rewind">−15s</button><button id="play" class="primary play" disabled>Play</button><button id="forward" disabled aria-label="Forward">+30s</button></div></div>
+          <div class="transport">
+            <p id="current-chapter">Chapter unavailable</p>
+            <input id="seek" type="range" min="0" max="1" value="0" step=".1" aria-label="Position in current chapter" disabled>
+            <div class="times"><span><span id="elapsed">—</span> into chapter</span><span><span id="chapter-left">—</span> left</span></div>
+            <div class="buttons"><button id="back" disabled aria-label="Rewind">−15s</button><button id="play" class="primary play" aria-label="Play" disabled>▶</button><button id="forward" disabled aria-label="Forward">+30s</button></div>
+            <p class="book-remaining"><span id="book-left">—</span> left in book</p>
+          </div>
           <div class="settings-row"><label>Speed<select id="speed"><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Seek buttons<select id="seek-step"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="45">45 seconds</option><option value="60">60 seconds</option></select></label><label>Quiet skipping<select id="strength"><option value="off">Off</option><option value="conservative" selected>Conservative</option><option value="balanced">Balanced</option><option value="strong">Strong</option></select></label><label>Appearance<select id="theme"><option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
           <div class="analysis-box"><div class="card-top"><strong>Pause analysis</strong><span id="analysis-percent">Not started</span></div><progress id="analysis-progress" max="1" value="0"></progress><p id="analysis-status" class="tiny">Pause timestamps are saved alongside your imported book. Analysis may pause when the app is hidden.</p><div class="inline"><button id="analyse" disabled>Analyse book</button><button id="cancel" hidden>Stop analysis</button></div></div>
-          <details id="chapters-panel"><summary>Chapters <span id="chapter-count">0</span></summary><ol id="chapters" class="chapters"></ol></details>
-          <section class="chapter-timing" aria-label="Listening time">
-            <p id="current-chapter">Chapter unavailable</p>
-            <dl class="timing-grid">
-              <div><dt>Into chapter</dt><dd id="chapter-elapsed">—</dd></div>
-              <div><dt>Chapter left</dt><dd id="chapter-left">—</dd></div>
-              <div><dt>Book left</dt><dd id="book-left">—</dd></div>
-            </dl>
-            <p class="tiny">Remaining time at your speed, before quiet skipping.</p>
-          </section>
+          <p id="quiet-status" class="tiny" role="status"></p>
+          <button id="prepare-quiet" hidden>Prepare quiet skipping</button>
+          <dialog id="chapters-dialog" aria-labelledby="chapters-title"><div class="dialog-heading"><h2 id="chapters-title">Chapters</h2><button id="close-chapters" aria-label="Close chapters">✕</button></div><ol id="chapters" class="chapters"></ol></dialog>
           <audio id="audio" preload="metadata"></audio>
         </section>
         <div class="side">
@@ -52,7 +49,7 @@
         <details><summary>Recent diagnostic events</summary><pre id="diagnostic-events"></pre></details>
       </section>
       <p id="message" role="status" aria-live="polite"></p>
-      <footer>Build 0.5.1 · Background skipping is under test.</footer>
+      <footer>Build 0.6.0 · Background skipping is under test.</footer>
     </main>
   </div>
 </body>

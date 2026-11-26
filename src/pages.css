@@ -27,12 +27,24 @@ html[data-theme=dark] header { background: #101816; }
 .page-navigation a[aria-current=page] { background: #315e47; color: white; }
 .layout { display: block; }
 #library button { width: 100%; text-align: left; overflow-wrap: anywhere; }
-.chapter-timing { margin-top: 20px; border-top: 1px solid #d7e0da; }
-.timing-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.timing-grid dt { font-size: 12px; }
-.timing-grid dd { margin: 6px 0 0; font: 20px ui-monospace, monospace; }
-html[data-theme=dark] .chapter-timing { border-color: #30423a; }
-.page-view { max-width: 760px; margin: 32px auto; min-width: 0; }
+.shell { max-width: 960px; padding: 0 12px; }
+.page-view { max-width: 860px; margin: 16px auto; min-width: 0; }
+.player { padding: 18px; }
+.player-heading, .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.player-heading h2 { margin: 0; font-size: 26px; overflow-wrap: anywhere; }
+#show-chapters { flex-shrink: 0; padding: 4px 12px; font-size: 26px; }
+#current-chapter { margin: 0 0 12px; font-size: 16px; }
+.player .transport { padding: 20px 0 8px; }
+.player .play { min-width: 64px; width: 64px; height: 64px; padding: 0; font-size: 26px; border-radius: 50%; }
+.book-remaining { margin: 16px 0 0; text-align: center; font-size: 12px; opacity: .75; }
+.player .settings-row { padding-top: 16px; gap: 12px; grid-template-columns: 1fr 1fr; }
+#quiet-status:empty { display: none; }
+html[data-page=player] footer { display: none; }
+dialog { width: min(560px, calc(100% - 24px)); max-height: 80dvh; border: 1px solid #dce5df; border-radius: 16px; padding: 18px; background: white; color: #19352f; }
+dialog::backdrop { background: #0009; }
+.dialog-heading h2 { margin: 0; }
+dialog .chapters { max-height: 60dvh; }
+html[data-theme=dark] dialog { background: #192421; color: #e4eee5; border-color: #30423a; }
 .page-view[hidden] { display: none; }
 .page-view > .card, .page-view > .file-button { margin-bottom: 24px; }
 .page-view > .settings-row {
@@ -52,5 +64,7 @@ html[data-theme=dark] .page-navigation { border-color: #30423a; }
   .page-navigation { gap: 0; }
   .page-navigation a { padding: 10px 7px; font-size: 13px; }
   .page-view > .settings-row { grid-template-columns: 1fr; padding: 20px; }
-  .page-view { margin: 24px auto; }
+  .shell { padding: 0 8px; }
+  .page-view { margin: 12px auto; }
+  .player { padding: 12px; }
 }

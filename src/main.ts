@@ -30,10 +30,6 @@ libraryDetails.open = true;
 libraryDetails.querySelector('summary')!.textContent = 'Your books';
 document.getElementById('clear')!.textContent = 'Remove local library';
 views.get('player')!.append(document.querySelector('.player')!);
-const chooseBook = document.createElement('a');
-chooseBook.href = '#/library';
-chooseBook.textContent = 'Choose a book';
-document.getElementById('book-info')!.after(chooseBook);
 const settingsView = views.get('settings')!;
 const settingsHeading = document.createElement('h1');
 settingsHeading.textContent = 'Settings';
@@ -67,12 +63,14 @@ const diagnostics = document.createElement('details');
 const diagnosticsTitle = document.createElement('summary');
 diagnosticsTitle.textContent = 'Diagnostics and listening tests';
 diagnostics.append(diagnosticsTitle, document.querySelector('.test')!, document.querySelector('.diagnostics')!);
+diagnostics.append(document.querySelector('.analysis-box')!);
 settingsView.append(diagnostics);
 document.querySelector('main')!.append(document.querySelector('footer')!);
 document.querySelector('.intro')!.remove();
 function navigate() {
   const name = location.hash.slice(2) || 'player';
   const selected = views.has(name) ? name : 'player';
+  document.documentElement.dataset.page = selected;
   for (const [key, view] of views) view.hidden = key !== selected;
   for (const link of navigation.querySelectorAll('a')) {
     if (link.hash === `#/${selected}`) link.setAttribute('aria-current', 'page');
@@ -85,16 +83,22 @@ import { diagnosticSource, emptyMaps, skipTarget, type Strength, type Maps } fro
 import { all, put, fingerprint, clearRecords, saveImportedBook, storedAudio, storedAudioIds } from './db';
 import { checkAudioFile } from './imports';
 import { confirmedSeek } from './seek-result';
+import { chapterWindow } from './chapter';
 import type { Book, Session } from './types';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const audio = $<HTMLAudioElement>('audio'), strength = $<HTMLSelectElement>('strength'), speed = $<HTMLSelectElement>('speed'), seekStep = $<HTMLSelectElement>('seek-step'), theme = $<HTMLSelectElement>('theme');
 const seek = $<HTMLInputElement>('seek');
+const chaptersDialog = $<HTMLDialogElement>('chapters-dialog');
+$('show-chapters').onclick = () => chaptersDialog.showModal();
+$('close-chapters').onclick = () => chaptersDialog.close();
+let scrubbing = false;
+let displayedChapterStart = 0;
 let current: Book | null = null, file: File | null = null, sourceUrl = '', synthetic = false;
 let worker: Worker | null = null, runId = 0, busy = false, books: Book[] = [], session: Session | null = null;
 let lastTick = 0, lastSaved = 0, lastSessionSaved = 0, seekingBySkip = false, skipRequestAt = 0;
 let generation = 0, toastTimer = 0, sourceReady = false;
-const VERSION = '0.5.1';
+const VERSION = '0.6.0';
 const sessionFiles = new Map<string, File>();
 let stage = 'Choose a book', decoder = 'untested';
 let requested = 0, completed = 0, missed = 0;
@@ -156,10 +160,13 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
   if (!synthetic && current.complete && current.analysisVersion !== 4) {
     $('analysis-status').textContent += ' Update pause analysis for the revised Strong level. Balanced is used for Strong until then.';
   }
-  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || (current.complete && current.analysisVersion === 4);
+  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || (current.complete && current.analysisVersion === 4 && !current.analysisError);
   $('analyse').textContent = current.analysisVersion !== 4 && current.analyzedUntil > 0 ? 'Update pause analysis' : current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
   $('cancel').hidden = !worker;
-  strength.disabled = !!current.analysisError || !current.complete;
+  strength.disabled = false;
+  const needsUpdate = !synthetic && strength.value === 'strong' && current.analysisVersion !== 4;
+  $('quiet-status').textContent = strength.value === 'off' ? '' : current.analysisError ? `Quiet skipping needs attention. ${current.analysisError}` : !current.complete ? worker ? `Preparing quiet skipping · ${Math.round(fraction * 100)}%` : 'Prepare this book to enable quiet skipping.' : needsUpdate ? 'Update analysis to apply Strong.' : '';
+  $('prepare-quiet').hidden = strength.value === 'off' || (!!current.complete && !current.analysisError && !needsUpdate) || !!worker;
   if (current.analysisError) $('analysis-percent').textContent = 'Failed';
   $('diagnostic-status').textContent = current.analysisError || (current.complete ? 'Analysis complete' : stage);
   $('file-diagnostics').textContent = `Container: ${current.container || 'unknown'} · Codec: ${current.codec || 'unknown'} · Duration: ${time(current.duration)} · Chapters: ${current.chapters.length} · Worker decoder: ${decoder}`;
@@ -167,16 +174,13 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
 function renderBook() {
   if (!current) return;
   $('player-title').textContent = current.title;
-  $('source-kind').textContent = synthetic ? 'Generated test' : 'Local original';
-  $('book-info').textContent = synthetic ? 'Four-second tones · six-second pauses · repeating' : `${(current.size / 1e6).toFixed(1)} MB · ${current.codec || 'M4B'} · ${current.chapters.length} chapters`;
   strength.value = current.strength; speed.value = String(current.rate); seekStep.value = String(seekSeconds);
   $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`;
-  $('chapter-count').textContent = String(current.chapters.length);
   const list = $('chapters'); list.replaceChildren();
   for (const ch of current.chapters) {
     const li = document.createElement('li'), b = document.createElement('button'), title = document.createElement('span'), stamp = document.createElement('time');
     title.textContent = ch.title; stamp.textContent = time(ch.start); b.append(title, stamp);
-    b.onclick = () => jump(ch.start); li.append(b); list.append(li);
+    b.onclick = () => { jump(ch.start); chaptersDialog.close(); }; li.append(b); list.append(li);
   }
   if (!current.chapters.length) { const li = document.createElement('li'); li.textContent = synthetic ? 'No chapters in the generated test.' : 'No embedded chapters found. Record this as a compatibility issue if the source has chapters.'; list.append(li); }
   renderAnalysis();
@@ -225,13 +229,14 @@ function endSession(reason = 'user') {
   $('stop-test').hidden = true; $('start-test').hidden = false; renderMetrics();
 }
 function setSource(blob: Blob) {
+  scrubbing = false;
   pending = null; requested = completed = missed = 0; history.length = 0;
   decoder = 'untested'; stage = 'Ready to analyse';
   trace('source-opened');
   sourceReady = false; audio.pause(); if (sourceUrl) URL.revokeObjectURL(sourceUrl); sourceUrl = URL.createObjectURL(blob);
   lastTick = 0; seekingBySkip = false; audio.src = sourceUrl; audio.loop = synthetic; audio.load();
   for (const id of ['play','back','forward','start-test']) $<HTMLButtonElement>(id).disabled = false;
-  seek.disabled = false;
+  renderTiming();
 }
 async function loadFile(selected: File, importAudio = true) {
   if (busy) return;
@@ -303,7 +308,7 @@ $('demo').onclick = () => {
 };
 $('analyse').onclick = () => {
   if (!file || !current || worker || synthetic) return;
-  if (current.analysisVersion !== 4) {
+  if (current.analysisVersion !== 4 || (current.analysisError && current.complete)) {
     current.maps = emptyMaps();
     current.analyzedUntil = 0;
     current.complete = false;
@@ -343,16 +348,27 @@ $('analyse').onclick = () => {
 $('cancel').onclick = () => { stage = 'Analysis stopped'; stopWorker(); say('Analysis stopped. Completed checkpoints are saved.'); };
 function jump(to: number) { if (!current || !Number.isFinite(audio.duration)) return; event('manual-seek', { to }); seekingBySkip = false; audio.currentTime = Math.max(0, Math.min(audio.duration, to)); recordProgress(); }
 $('back').onclick = () => jump(audio.currentTime - seekSeconds); $('forward').onclick = () => jump(audio.currentTime + seekSeconds);
-seek.onchange = () => jump(Number(seek.value));
+seek.oninput = () => { scrubbing = true; };
+seek.onchange = () => {
+  const target = displayedChapterStart + Number(seek.value);
+  scrubbing = false;
+  jump(target);
+};
+seek.addEventListener('pointercancel', () => { scrubbing = false; renderTiming(); });
 $('play').onclick = () => { if (audio.paused) void audio.play().catch(fail); else audio.pause(); };
 speed.onchange = () => { audio.playbackRate = Number(speed.value); recordProgress(); renderTiming(); event('speed', { value: audio.playbackRate }); };
-strength.onchange = () => { recordProgress(); renderAnalysis(); event('strength', { value: strength.value }); };
+strength.onchange = () => {
+  if (current) current.strength = strength.value as Strength;
+  recordProgress(); renderAnalysis(); event('strength', { value: strength.value });
+  if (strength.value !== 'off' && file && current && (!current.complete || !!current.analysisError || (strength.value === 'strong' && current.analysisVersion !== 4)) && !worker) $('analyse').click();
+};
+$('prepare-quiet').onclick = () => $('analyse').click();
 seekStep.onchange = () => { seekSeconds = Number(seekStep.value); localStorage.setItem('still-seek-seconds', String(seekSeconds)); $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`; event('seek-step', { value: seekSeconds }); };
 theme.onchange = () => { localStorage.setItem('still-theme', theme.value); applyTheme(theme.value); };
 audio.onloadedmetadata = () => {
   if (!current) return;
   sourceReady = true;
-  if (Number.isFinite(audio.duration)) { current.duration = audio.duration; seek.max = String(audio.duration); $('duration').textContent = time(audio.duration); }
+  if (Number.isFinite(audio.duration)) current.duration = audio.duration;
   audio.playbackRate = current.rate; audio.preservesPitch = true;
   if (current.position > 0 && current.position < audio.duration) audio.currentTime = current.position;
   if ('mediaSession' in navigator) {
@@ -362,25 +378,26 @@ audio.onloadedmetadata = () => {
 };
 function renderTiming() {
   const position = audio.currentTime || 0;
-  seek.value = String(position);
   const duration = Number.isFinite(audio.duration) ? audio.duration : current?.duration || 0;
   const rate = audio.playbackRate || 1;
-  $('elapsed').textContent = time(position);
   $('book-left').textContent = current ? time((duration - position) / rate) : '—';
-  const chapters = current?.chapters || [];
-  let index = chapters.length - 1;
-  while (index >= 0 && chapters[index].start > position) index--;
-  if (index < 0) {
+  if (scrubbing) return;
+  const chapter = chapterWindow(current?.chapters || [], position, duration);
+  seek.disabled = !chapter;
+  if (!chapter) {
+    seek.max = '1'; seek.value = '0';
     $('current-chapter').textContent = 'Chapter unavailable';
-    $('chapter-elapsed').textContent = '—';
+    $('elapsed').textContent = '—';
     $('chapter-left').textContent = '—';
     return;
   }
-  const chapter = chapters[index];
-  const end = Math.min(duration, chapters[index + 1]?.start ?? duration);
+  displayedChapterStart = chapter.start;
+  seek.max = String(chapter.end - chapter.start);
+  seek.value = String(position - chapter.start);
+  seek.setAttribute('aria-valuetext', `${time(position - chapter.start)} into ${chapter.title}`);
   $('current-chapter').textContent = chapter.title;
-  $('chapter-elapsed').textContent = time(position - chapter.start);
-  $('chapter-left').textContent = time((end - position) / rate);
+  $('elapsed').textContent = time(position - chapter.start);
+  $('chapter-left').textContent = time((chapter.end - position) / rate);
 }
 audio.addEventListener('loadedmetadata', renderTiming);
 audio.addEventListener('timeupdate', renderTiming);
@@ -397,7 +414,7 @@ function tick() {
   if (seekingBySkip && now - skipRequestAt > 5000) { missed++; trace('seek-timeout', pending); pending = null; seekingBySkip = false; }
   if (current.complete && !current.analysisError && !audio.seeking && !seekingBySkip) {
     const selectedStrength = strength.value === 'strong' && !synthetic && current.analysisVersion !== 4 ? 'balanced' : strength.value as Strength;
-    const target = skipTarget(current.maps, selectedStrength, audio.currentTime);
+    const target = scrubbing ? null : skipTarget(current.maps, selectedStrength, audio.currentTime);
     if (target !== null && target < audio.duration) {
       requested++; pending = { from: audio.currentTime, target }; trace('skip-request', pending);
       if (session && !session.ended) { session.skipped++; if (document.hidden) session.hiddenSkips++; }
@@ -406,7 +423,7 @@ function tick() {
   }
   if (now - lastSaved > 1000) { lastSaved = now; recordProgress(); }
   if (now - lastSessionSaved > 10000) { lastSessionSaved = now; void saveSession(); }
-  if (!document.hidden) { seek.value = String(audio.currentTime); renderTiming(); renderMetrics(); }
+  if (!document.hidden) { renderTiming(); renderMetrics(); }
 }
 audio.ontimeupdate = tick;
 window.setInterval(tick, 25);
@@ -418,8 +435,8 @@ audio.onseeked = () => {
   } else event('seek-complete');
   pending = null; seekingBySkip = false;
 };
-audio.onplay = () => { $('play').textContent = 'Pause'; lastTick = performance.now(); event('play'); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; };
-audio.onpause = () => { $('play').textContent = 'Play'; lastTick = 0; recordProgress(); event('pause'); void saveSession(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; };
+audio.onplay = () => { $('play').textContent = 'Ⅱ'; $('play').setAttribute('aria-label', 'Pause'); lastTick = performance.now(); event('play'); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; };
+audio.onpause = () => { $('play').textContent = '▶'; $('play').setAttribute('aria-label', 'Play'); lastTick = 0; recordProgress(); event('pause'); void saveSession(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; };
 audio.onerror = () => { event('audio-error', { code: audio.error?.code }); fail(`Playback failed (media error ${audio.error?.code ?? 'unknown'}). This file/browser combination needs investigation.`); };
 for (const name of ['waiting','stalled','ended','ratechange','playing']) audio.addEventListener(name, () => event(name));
 document.addEventListener('visibilitychange', () => { event('visibility'); recordProgress(); void saveSession(); });

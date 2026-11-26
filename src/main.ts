@@ -3,6 +3,7 @@ import './dark.css';
 import { diagnosticSource, emptyMaps, skipTarget, type Strength, type Maps } from './analysis';
 import { all, put, fingerprint, clearRecords } from './db';
 import { checkAudioFile } from './imports';
+import { confirmedSeek } from './seek-result';
 import type { Book, Session } from './types';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -12,7 +13,29 @@ let current: Book | null = null, file: File | null = null, sourceUrl = '', synth
 let worker: Worker | null = null, runId = 0, busy = false, books: Book[] = [], session: Session | null = null;
 let lastTick = 0, lastSaved = 0, lastSessionSaved = 0, seekingBySkip = false, skipRequestAt = 0;
 let generation = 0, toastTimer = 0, sourceReady = false;
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
+let stage = 'Choose a book', decoder = 'untested';
+let requested = 0, completed = 0, missed = 0;
+let pending: { from: number; target: number } | null = null;
+const history: string[] = [];
+function trace(kind: string, detail?: unknown) {
+  history.push([new Date().toLocaleTimeString(), kind, detail && JSON.stringify(detail)].filter(Boolean).join(' '));
+  if (history.length > 20) history.shift();
+  $('diagnostic-events').textContent = history.join('\n');
+  $('seek-diagnostics').textContent = `Quiet skips: ${requested} requested · ${completed} confirmed · ${missed} failed`;
+  event(kind, detail);
+}
+function workerError(e: ErrorEvent) {
+  return [e.message || 'Browser could not start the analysis worker', e.filename && `${e.filename.split('/').pop()}:${e.lineno}`].filter(Boolean).join(' · ');
+}
+function analysisFailed(phase: string, message: string) {
+  if (!current) return;
+  current.analysisError = `${phase} failed: ${message}`;
+  stopWorker();
+  trace('analysis-error', {phase, message});
+  void saveBook();
+  fail(current.analysisError);
+}
 let seekSeconds = Number(localStorage.getItem('still-seek-seconds') || 30);
 const savedTheme = localStorage.getItem('still-theme') || 'system';
 seekStep.value = String([15, 30, 45, 60].includes(seekSeconds) ? seekSeconds : 30);
@@ -41,10 +64,14 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
   $<HTMLProgressElement>('analysis-progress').value = current.complete ? 1 : fraction;
   $('analysis-percent').textContent = current.complete ? 'Ready' : `${Math.round(fraction*100)}%`;
   const count = current.maps[strength.value === 'off' ? 'conservative' : strength.value as keyof Maps].length;
-  $('analysis-status').textContent = synthetic ? 'Known pauses in generated test audio. This does not test M4B decoding or chapters.' : `${count.toLocaleString()} quiet intervals · ${time(progress)} analysed${current.complete ? ' · complete' : ' · normal playback beyond coverage'}. ${worker ? 'Keep this app visible during analysis.' : ''}`;
+  $('analysis-status').textContent = synthetic ? 'Known pauses in generated test audio.' : `${count.toLocaleString()} quiet intervals · ${time(progress)} analysed. ${current.complete ? 'Ready for playback.' : 'Complete analysis to enable quiet skipping.'}`;
   $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || current.complete;
   $('analyse').textContent = current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
   $('cancel').hidden = !worker;
+  strength.disabled = !!current.analysisError || !current.complete;
+  if (current.analysisError) $('analysis-percent').textContent = 'Failed';
+  $('diagnostic-status').textContent = current.analysisError || (current.complete ? 'Analysis complete' : stage);
+  $('file-diagnostics').textContent = `Container: ${current.container || 'unknown'} · Codec: ${current.codec || 'unknown'} · Duration: ${time(current.duration)} · Chapters: ${current.chapters.length} · Worker decoder: ${decoder}`;
 }
 function renderBook() {
   if (!current) return;
@@ -81,6 +108,9 @@ function endSession(reason = 'user') {
   $('stop-test').hidden = true; $('start-test').hidden = false; renderMetrics();
 }
 function setSource(blob: Blob) {
+  pending = null; requested = completed = missed = 0; history.length = 0;
+  decoder = 'untested'; stage = 'Ready to analyse';
+  trace('source-opened');
   sourceReady = false; audio.pause(); if (sourceUrl) URL.revokeObjectURL(sourceUrl); sourceUrl = URL.createObjectURL(blob);
   lastTick = 0; seekingBySkip = false; audio.src = sourceUrl; audio.loop = synthetic; audio.load();
   for (const id of ['play','back','forward','start-test']) $<HTMLButtonElement>(id).disabled = false;
@@ -101,18 +131,18 @@ async function loadFile(selected: File) {
     const saved = books.find(b => b.id === id);
     current = saved || { id, title: selected.name, filename: selected.name, size: selected.size, duration: 0, chapters: [], maps: emptyMaps(), analyzedUntil: 0, complete: false, position: 0, strength: 'conservative', rate: 1, updated: Date.now() };
     renderBook(); setSource(selected);
-    if (!saved || !saved.chapters.length) {
+    if (!saved?.container) {
       const metaWorker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = metaWorker; renderAnalysis();
       metaWorker.onmessage = ({ data }) => {
         if (ownGeneration !== generation || !current || worker !== metaWorker) return;
         if (data.type === 'metadata') {
-          current.title = data.title; current.chapters = data.chapters; current.codec = data.codec;
+          current.title = data.title; current.chapters = data.chapters; current.codec = data.codec; current.container = data.container;
           if (data.duration > 0) current.duration = data.duration;
           metaWorker.terminate(); worker = null; renderBook(); void saveBook().then(renderLibrary);
           say(`Book opened locally (${current.codec || 'MPEG-4 audio'}). Analyse it to enable quiet skipping.`);
-        } else if (data.type === 'error') { metaWorker.terminate(); worker = null; renderAnalysis(); fail(`Chapter inspection failed: ${data.message}`); }
+        } else if (data.type === 'error') { stopWorker(); stage = 'Metadata inspection failed: ' + data.message; trace('metadata-error', data.message); renderAnalysis(); fail(stage); }
       };
-      metaWorker.onerror = () => { metaWorker.terminate(); worker = null; renderAnalysis(); fail('Metadata worker failed. Ordinary playback may still work; record this compatibility failure.'); };
+      metaWorker.onerror = e => { if (worker === metaWorker) { stopWorker(); stage = 'Metadata inspection failed: ' + workerError(e); trace('metadata-error', workerError(e)); renderAnalysis(); fail(stage); } };
       metaWorker.postMessage({ type: 'inspect', file: selected });
     } else { say('Saved analysis and progress reconnected to this file.'); }
   } catch (e) { fail(e); }
@@ -130,9 +160,17 @@ $('analyse').onclick = () => {
   if (!file || !current || worker || synthetic) return;
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = w; const run = ++runId, book = current;
   let first = true; const began = performance.now();
+  delete book.analysisError; stage = 'Starting analysis worker'; trace('analysis-start');
   w.onmessage = ({ data }) => {
     if (run !== runId || current !== book) return;
-    if (data.type === 'error') { stopWorker(); fail(data.message); return; }
+    if (data.type === 'ready') { decoder = data.audioDecoder ? 'WebCodecs available' : 'WebCodecs unavailable'; renderAnalysis(); return; }
+    if (data.type === 'stage') {
+      stage = data.phase;
+      if (data.codec) book.codec = data.codec;
+      if (data.canDecode) decoder = 'supported';
+      trace('analysis-stage', stage); renderAnalysis(); return;
+    }
+    if (data.type === 'error') { analysisFailed(data.phase || stage, data.message); return; }
     if (data.type !== 'analysis') return;
     for (const key of Object.keys(book.maps) as (keyof Maps)[]) {
       if (first) book.maps[key] = book.maps[key].filter(r => r[1] <= data.start);
@@ -147,10 +185,11 @@ $('analyse').onclick = () => {
     renderAnalysis(data.progress); void saveBook();
     if (data.complete) { stopWorker(); event('analysis-complete', { seconds: (performance.now()-began)/1000 }); say('Analysis complete. Start a book test session to check locked-screen skipping.'); void renderLibrary(); }
   };
-  w.onerror = () => { if (run === runId) { stopWorker(); fail('Analysis worker failed. Saved checkpoints are retained.'); } };
+  w.onerror = e => { if (run === runId) analysisFailed(stage, workerError(e)); };
+  w.onmessageerror = () => { if (run === runId) analysisFailed(stage, 'Unreadable response from decoder'); };
   w.postMessage({ type: 'analyse', file, from: book.analyzedUntil }); renderAnalysis(); say('Analysing locally. Keep this app visible; you can stop and resume later.');
 };
-$('cancel').onclick = () => { stopWorker(); say('Analysis stopped. Completed checkpoints are saved.'); };
+$('cancel').onclick = () => { stage = 'Analysis stopped'; stopWorker(); say('Analysis stopped. Completed checkpoints are saved.'); };
 function jump(to: number) { if (!current || !Number.isFinite(audio.duration)) return; event('manual-seek', { to }); seekingBySkip = false; audio.currentTime = Math.max(0, Math.min(audio.duration, to)); recordProgress(); }
 $('back').onclick = () => jump(audio.currentTime - seekSeconds); $('forward').onclick = () => jump(audio.currentTime + seekSeconds);
 seek.onchange = () => jump(Number(seek.value));
@@ -178,11 +217,11 @@ function tick() {
     if (delta > 3) { session.gaps++; event('callback-gap', { seconds: delta }); }
   }
   lastTick = now;
-  if (seekingBySkip && now - skipRequestAt > 5000) { event('seek-timeout'); seekingBySkip = false; }
-  if (!audio.seeking && !seekingBySkip) {
+  if (seekingBySkip && now - skipRequestAt > 5000) { missed++; trace('seek-timeout', pending); pending = null; seekingBySkip = false; }
+  if (current.complete && !current.analysisError && !audio.seeking && !seekingBySkip) {
     const target = skipTarget(current.maps, strength.value as Strength, audio.currentTime);
     if (target !== null && target < audio.duration) {
-      event('skip-request', { from: audio.currentTime, to: target, strength: strength.value });
+      requested++; pending = { from: audio.currentTime, target }; trace('skip-request', pending);
       if (session && !session.ended) { session.skipped++; if (document.hidden) session.hiddenSkips++; }
       seekingBySkip = true; skipRequestAt = now; audio.currentTime = target;
     }
@@ -193,7 +232,14 @@ function tick() {
 }
 audio.ontimeupdate = tick;
 window.setInterval(tick, 100); // Deliberately ordinary scheduling: no hidden audio or keep-alive tricks.
-audio.onseeked = () => { event(seekingBySkip ? 'skip-complete' : 'seek-complete'); seekingBySkip = false; };
+audio.onseeked = () => {
+  if (seekingBySkip && pending) {
+    const ok = confirmedSeek(pending.from, pending.target, audio.currentTime);
+    if (ok) completed++; else missed++;
+    trace(ok ? 'skip-confirmed' : 'skip-missed', { ...pending, actual: audio.currentTime });
+  } else event('seek-complete');
+  pending = null; seekingBySkip = false;
+};
 audio.onplay = () => { $('play').textContent = 'Pause'; lastTick = performance.now(); event('play'); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; };
 audio.onpause = () => { $('play').textContent = 'Play'; lastTick = 0; recordProgress(); event('pause'); void saveSession(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; };
 audio.onerror = () => { event('audio-error', { code: audio.error?.code }); fail(`Playback failed (media error ${audio.error?.code ?? 'unknown'}). This file/browser combination needs investigation.`); };
@@ -238,6 +284,13 @@ $('clear').onclick = async () => {
   await clearRecords(); location.reload();
 };
 $('capabilities').textContent = `Secure page: ${isSecureContext ? 'yes' : 'no'} · Audio decoder: ${'AudioDecoder' in globalThis ? 'available' : 'unavailable'} · Media controls: ${'mediaSession' in navigator ? 'available' : 'unavailable'}. Capability presence does not certify background behavior.`;
+$('decoder-test').onclick = async () => {
+  try {
+    const res = await fetch('./quiet-test.m4a');
+    if (!res.ok) throw Error('Could not load the packaged AAC test');
+    await loadFile(new File([await res.blob()], 'Still AAC test.m4b', { type: 'audio/mp4' }));
+  } catch (error) { fail(error); }
+};
 void renderLibrary().catch(fail);
 void all<Session>('sessions').then(sessions => {
   if (session) return;

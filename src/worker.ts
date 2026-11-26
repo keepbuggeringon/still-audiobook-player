@@ -4,20 +4,27 @@ import { QuietDetector, type Maps } from './analysis';
 import type { Chapter } from './types';
 
 let running = false;
+self.postMessage({ type: 'ready', audioDecoder: typeof AudioDecoder !== 'undefined' });
 self.onmessage = async ({ data }) => {
   if (running) return;
   running = true;
   let input: Input | undefined;
+  let phase = data.type === 'inspect' ? 'metadata' : 'container';
+  const stage = (name: string, detail: object = {}) => { phase = name; self.postMessage({ type: 'stage', phase, ...detail }); };
   try {
     const file = data.file as File;
     if (data.type === 'inspect') {
       const meta = await parseBlob(file, { includeChapters: true, skipCovers: true, duration: false, maxChapterCount: 5000 });
       const chapters: Chapter[] = (meta.format.chapters ?? []).map((c, i) => ({ title: c.title || `Chapter ${i + 1}`, start: c.start / (c.timeScale ?? 1) })).filter(c => Number.isFinite(c.start) && c.start >= 0).sort((a,b) => a.start-b.start);
-      self.postMessage({ type: 'metadata', title: meta.common.title || file.name, duration: meta.format.duration || 0, chapters, codec: meta.format.codec || 'Unknown' });
+      self.postMessage({ type: 'metadata', title: meta.common.title || file.name, duration: meta.format.duration || 0, chapters, codec: meta.format.codec || 'Unknown', container: meta.format.container || 'Unknown' });
     } else {
+      stage('container');
       input = new Input({ source: new BlobSource(file), formats: [MP4] });
       const track = await input.getPrimaryAudioTrack();
-      if (!track || !(await track.canDecode())) throw Error('This browser cannot decode this book for analysis. Ordinary playback may still work.');
+      if (!track) throw Error('No audio track found in this MPEG-4 file.');
+      stage('decoder-check', { codec: await track.getCodec() });
+      if (!(await track.canDecode())) throw Error('This browser cannot decode this audio track for analysis. Ordinary playback may still work.');
+      stage('decoding', { codec: await track.getCodec(), canDecode: true });
       const decoder = new AudioSampleSink(track), detector = new QuietDetector();
       const from = Math.max(0, Number(data.from) || 0);
       // Re-read a short overlap; parent merges only intervals ending before this point.
@@ -41,8 +48,9 @@ self.onmessage = async ({ data }) => {
         if (performance.now() - last > 1500) { send(false); last = performance.now(); }
         if (++count % 150 === 0) await new Promise(r => setTimeout(r, 0));
       }
+      if (count === 0) throw Error('Decoder produced no audio samples. Analysis is incomplete.');
       detector.flush(); send(true);
     }
-  } catch (e) { self.postMessage({ type: 'error', message: e instanceof Error ? e.message : String(e) }); }
+  } catch (e) { self.postMessage({ type: 'error', phase, message: e instanceof Error ? e.message : String(e) }); }
   finally { input?.dispose(); running = false; }
 };

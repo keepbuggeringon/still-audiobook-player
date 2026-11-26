@@ -91,6 +91,9 @@ h1, h2, .brand { font-family: inherit; letter-spacing: -0.6px; }
 html[data-accent=purple] { --accent: #6b4aa1; } html[data-accent=blue] { --accent: #2563a8; } html[data-accent=turquoise] { --accent: #087f83; } html[data-accent=aqua] { --accent: #167f9d; } html[data-accent=grey] { --accent: #5b6470; } html[data-accent=green] { --accent: #315e47; }
 html[data-accent] .primary, html[data-accent] .page-navigation a[aria-current=page] { background: var(--accent); border-color: var(--accent); }
 html[data-accent] .brand, html[data-accent] .eyebrow, html[data-accent] label, html[data-accent] .book-menu summary { color: var(--accent); }
+html[data-accent] h1, html[data-accent] h2, html[data-accent] #current-chapter { color: color-mix(in srgb, var(--accent) 85%, #19352f); }
+html[data-accent] .card, html[data-accent] .page-view > .settings-row { border-color: color-mix(in srgb, var(--accent) 24%, #dce5df); }
+html[data-accent] .buttons button:not(.primary), html[data-accent] .secondary { background: color-mix(in srgb, var(--accent) 8%, white); }
 html[data-accent] button, html[data-accent] .file-button, html[data-accent] select, html[data-accent] textarea { border-color: color-mix(in srgb, var(--accent) 35%, #dce5df); }
 html[data-accent] .file-button, html[data-accent] .analysis-box { background: color-mix(in srgb, var(--accent) 8%, white); }
 html[data-accent] input[type=range], html[data-accent] progress { accent-color: var(--accent); }

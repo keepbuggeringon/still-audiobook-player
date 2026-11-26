@@ -1,0 +1,11 @@
+html[data-theme=dark]{color-scheme:dark}
+html[data-theme=dark] body{background:#101816;color:#e4eee5}
+html[data-theme=dark] header{border-color:#2a3b35}
+html[data-theme=dark] .lede,html[data-theme=dark] .muted,html[data-theme=dark] .tiny,html[data-theme=dark] label,html[data-theme=dark] .eyebrow,html[data-theme=dark] .times,html[data-theme=dark] .test>p{color:#a9bbb0}
+html[data-theme=dark] .card{background:#192421;border-color:#30423a;box-shadow:0 5px 25px #0005}
+html[data-theme=dark] button,html[data-theme=dark] .file-button,html[data-theme=dark] select,html[data-theme=dark] textarea{background:#22312c;color:#e4eee5;border-color:#40554b}
+html[data-theme=dark] button:hover,html[data-theme=dark] .file-button:hover{background:#2d4138}
+html[data-theme=dark] .secondary,html[data-theme=dark] .buttons button:not(.primary){background:#24332d}
+html[data-theme=dark] .analysis-box{background:#21312a}
+html[data-theme=dark] .metrics,html[data-theme=dark] details,html[data-theme=dark] .chapters button{border-color:#30423a}
+html[data-theme=dark] .status-ring{border-color:#718c7a}

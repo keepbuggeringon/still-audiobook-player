@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#102724">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer"><link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <title>Still — listening lab</title>
+</head>
+<body>
+  <div class="shell">
+    <header><a href="./" class="brand" aria-label="Still home"><span class="brand-mark">≋</span> still<span class="lab">LISTENING LAB</span></a><span class="badge">PHASE 01</span></header>
+    <main>
+      <section class="intro"><p class="eyebrow">YOUR BOOK. YOUR PHONE.</p><h1>A little less silence.<br>Stay in the story.</h1><p class="lede">A local listening experiment for iPhone. Open an original M4B, analyse its pauses, and test quiet skipping with the screen locked.</p><div class="privacy"><span class="dot"></span> Audio stays on this device · Originals stay untouched</div></section>
+      <div class="layout">
+        <section class="card player" aria-labelledby="player-title">
+          <div class="card-top"><span class="eyebrow">NOW LISTENING</span><span id="source-kind" class="pill">No file selected</span></div>
+          <div class="book-art" aria-hidden="true"><div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>MAKE ROOM<br>FOR THE STORY.</span></div>
+          <h2 id="player-title">Bring your own book</h2><p id="book-info" class="muted">M4B · up to 1 GB · embedded chapters</p>
+          <label class="file-button">Choose an M4B<input id="file" type="file" accept=".m4b,.m4a,audio/mp4"></label>
+          <p class="tiny">Select again after a full reload. Saved analysis and progress will reconnect to the same file.</p>
+          <div class="transport"><input id="seek" type="range" min="0" max="1" value="0" step=".1" aria-label="Playback position" disabled><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div><div class="buttons"><button id="back" disabled aria-label="Rewind">−15s</button><button id="play" class="primary play" disabled>Play</button><button id="forward" disabled aria-label="Forward">+30s</button></div></div>
+          <div class="settings-row"><label>Speed<select id="speed"><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Seek buttons<select id="seek-step"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="45">45 seconds</option><option value="60">60 seconds</option></select></label><label>Quiet skipping<select id="strength"><option value="off">Off</option><option value="conservative" selected>Conservative</option><option value="balanced">Balanced</option><option value="strong">Strong</option></select></label><label>Appearance<select id="theme"><option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
+          <div class="analysis-box"><div class="card-top"><strong>Pause analysis</strong><span id="analysis-percent">Not started</span></div><progress id="analysis-progress" max="1" value="0"></progress><p id="analysis-status" class="tiny">Only timestamps are saved. Analysis may pause when the app is hidden.</p><div class="inline"><button id="analyse" disabled>Analyse book</button><button id="cancel" hidden>Stop analysis</button></div></div>
+          <details id="chapters-panel"><summary>Chapters <span id="chapter-count">0</span></summary><ol id="chapters" class="chapters"></ol></details>
+          <audio id="audio" preload="metadata"></audio>
+        </section>
+        <div class="side">
+          <section class="card test" aria-labelledby="test-title"><div class="card-top"><span class="eyebrow">THE QUESTION WE’RE TESTING</span><span class="status-ring"></span></div><h2 id="test-title">Does it keep skipping<br>when your screen locks?</h2><p>Start with a generated tone test. With skipping on, each four-second tone should be followed by a short pause. With skipping off, the pause lasts six seconds.</p><button id="demo" class="secondary">Load tone & silence test</button><p class="tiny">Generated on your phone. Loops every two minutes of source audio. Use a comfortable volume.</p><ol class="steps"><li>Listen unlocked for one minute.</li><li>Start a test session, then lock your screen.</li><li>Listen for at least an hour, then try another app and Bluetooth controls.</li><li>Return, stop the session, and record what you heard.</li></ol><div class="test-actions"><button id="start-test" class="primary" disabled>Start test session</button><button id="stop-test" hidden>Stop session</button></div><p id="session-status" class="tiny">Device result: not yet verified.</p><div class="metrics"><div><strong id="skips">0</strong><span>Skips requested</span></div><div><strong id="hidden-skips">0</strong><span>While hidden</span></div><div><strong id="gap">—</strong><span>Longest callback gap</span></div></div><label class="field">What did you hear?<select id="verdict"><option value="pending">Not tested yet</option><option value="heard-working">Short pauses continued throughout</option><option value="heard-failure">Long pauses or playback failure</option></select></label><label class="field">Test notes<textarea id="notes" rows="3" placeholder="Lock duration, other apps used, Bluetooth, unexpected pauses…"></textarea></label><button id="export" class="secondary">Download test report</button><p class="tiny">Reports contain device capabilities and event times. Book titles and filenames are omitted; your notes are included. Nothing is sent automatically.</p></section>
+          <section class="card small"><div class="card-top"><h2>On this device</h2><span id="offline" class="pill">Checking offline setup</span></div><p id="capabilities" class="tiny"></p><p id="storage" class="tiny">Only book records, pause timestamps, and test reports are retained.</p><details><summary>Remembered books</summary><ul id="library"></ul></details><button id="clear" class="text-button">Clear saved records</button></section>
+        </div>
+      </div>
+      <p id="message" role="status" aria-live="polite"></p>
+      <footer>Feasibility build 0.1 · Background skipping is under test.<br>The app caches its own files, never your audiobook.</footer>
+    </main>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

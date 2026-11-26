@@ -352,6 +352,7 @@ audio.onloadedmetadata = () => {
 };
 function renderTiming() {
   const position = audio.currentTime || 0;
+  seek.value = String(position);
   const duration = Number.isFinite(audio.duration) ? audio.duration : current?.duration || 0;
   const rate = audio.playbackRate || 1;
   $('elapsed').textContent = time(position);

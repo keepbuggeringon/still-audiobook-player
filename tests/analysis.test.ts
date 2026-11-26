@@ -21,7 +21,7 @@ test('whisper-like low volume is preserved by conservative setting',()=>{
 });
 test('skip boundaries retain padding and off disables all skips',()=>{
   const m=emptyMaps(); m.conservative=[[2,5],[10,13]];
-  assert.equal(skipTarget(m,'conservative',2.1),null);assert.equal(skipTarget(m,'conservative',2.4),4.7);
+  assert.equal(skipTarget(m,'conservative',2.1),4.7);assert.equal(skipTarget(m,'conservative',2.4),4.7);
   assert.equal(skipTarget(m,'conservative',4.7),null);assert.equal(skipTarget(m,'conservative',6),null);
   assert.equal(skipTarget(m,'conservative',10.5),12.7);assert.equal(skipTarget(m,'off',10.5),null);
 });

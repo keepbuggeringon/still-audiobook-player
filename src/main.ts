@@ -1,5 +1,52 @@
 import './style.css';
 import './dark.css';
+import './pages.css';
+
+// Keep the audio element mounted while navigating between views.
+const navigation = document.createElement('nav');
+navigation.className = 'page-navigation';
+navigation.setAttribute('aria-label', 'Main navigation');
+const views = new Map<string, HTMLElement>();
+for (const name of ['library', 'player', 'settings']) {
+  const link = document.createElement('a');
+  link.href = `#/${name}`;
+  link.textContent = name[0].toUpperCase() + name.slice(1);
+  navigation.append(link);
+  const view = document.createElement('section');
+  view.className = 'page-view';
+  views.set(name, view);
+  document.querySelector('main')!.append(view);
+}
+document.querySelector('header')!.after(navigation);
+const libraryView = views.get('library')!;
+const libraryHeading = document.createElement('h1');
+libraryHeading.textContent = 'Your library';
+libraryView.append(libraryHeading);
+libraryView.append(document.querySelector('.file-button')!);
+libraryView.append(document.querySelector('.small')!);
+views.get('player')!.append(document.querySelector('.player')!);
+const settingsView = views.get('settings')!;
+const settingsHeading = document.createElement('h1');
+settingsHeading.textContent = 'Settings';
+settingsView.append(settingsHeading, document.querySelector('.settings-row')!);
+const diagnostics = document.createElement('details');
+const diagnosticsTitle = document.createElement('summary');
+diagnosticsTitle.textContent = 'Diagnostics and listening tests';
+diagnostics.append(diagnosticsTitle, document.querySelector('.test')!, document.querySelector('.diagnostics')!);
+settingsView.append(diagnostics);
+document.querySelector('main')!.append(document.querySelector('footer')!);
+document.querySelector('.intro')!.remove();
+function navigate() {
+  const name = location.hash.slice(2) || 'library';
+  const selected = views.has(name) ? name : 'library';
+  for (const [key, view] of views) view.hidden = key !== selected;
+  for (const link of navigation.querySelectorAll('a')) {
+    if (link.hash === `#/${selected}`) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+}
+window.addEventListener('hashchange', navigate);
+navigate();
 import { diagnosticSource, emptyMaps, skipTarget, type Strength, type Maps } from './analysis';
 import { all, put, fingerprint, clearRecords } from './db';
 import { checkAudioFile } from './imports';
@@ -231,7 +278,7 @@ function tick() {
   if (!document.hidden) { seek.value = String(audio.currentTime); $('elapsed').textContent = time(audio.currentTime); renderMetrics(); }
 }
 audio.ontimeupdate = tick;
-window.setInterval(tick, 100); // Deliberately ordinary scheduling: no hidden audio or keep-alive tricks.
+window.setInterval(tick, 25);
 audio.onseeked = () => {
   if (seekingBySkip && pending) {
     const ok = confirmedSeek(pending.from, pending.target, audio.currentTime);

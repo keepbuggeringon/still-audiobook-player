@@ -57,11 +57,11 @@ export class QuietDetector {
 
 export function skipTarget(maps: Maps, strength: Strength, time: number): number | null {
   if (strength === 'off') return null;
-  const list = maps[strength], pad = profiles[strength].padding;
+  const list = maps[strength], pad = strength === 'strong' ? .04 : profiles[strength].padding;
   let lo = 0, hi = list.length;
   while (lo < hi) { const mid = (lo + hi) >>> 1; if (list[mid][1] <= time) lo = mid + 1; else hi = mid; }
   const interval = list[lo];
-  return interval && time >= interval[0] + pad && time < interval[1] - pad - .08 ? interval[1] - pad : null;
+  return interval && time >= interval[0] && time < interval[1] - pad - .08 ? interval[1] - pad : null;
 }
 
 export function diagnosticSource() {

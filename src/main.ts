@@ -7,7 +7,7 @@ const navigation = document.createElement('nav');
 navigation.className = 'page-navigation';
 navigation.setAttribute('aria-label', 'Main navigation');
 const views = new Map<string, HTMLElement>();
-for (const name of ['library', 'player', 'settings', 'about']) {
+for (const name of ['player', 'library', 'settings', 'about']) {
   const link = document.createElement('a');
   link.href = `#/${name}`;
   link.textContent = name[0].toUpperCase() + name.slice(1);
@@ -23,8 +23,13 @@ const libraryHeading = document.createElement('h1');
 libraryHeading.textContent = 'Your library';
 libraryView.append(libraryHeading);
 libraryView.append(document.querySelector('.file-button')!);
+libraryView.append(document.getElementById('file-help')!);
 libraryView.append(document.querySelector('.small')!);
 views.get('player')!.append(document.querySelector('.player')!);
+const chooseBook = document.createElement('a');
+chooseBook.href = '#/library';
+chooseBook.textContent = 'Choose a book';
+document.getElementById('book-info')!.after(chooseBook);
 const settingsView = views.get('settings')!;
 const settingsHeading = document.createElement('h1');
 settingsHeading.textContent = 'Settings';
@@ -42,7 +47,7 @@ for (const [title, description] of [
   ['Off', 'Play every pause at its original length.'],
   ['Conservative', 'Skip very quiet pauses lasting at least 1.2 seconds. Leave about 0.30 seconds before the next sound.'],
   ['Balanced', 'Include more background noise and pauses lasting at least 0.9 seconds. Leave about 0.22 seconds before the next sound.'],
-  ['Strong', 'Skip pauses lasting at least 0.30 seconds, including louder room tone. Leave about 0.02 seconds before the next sound. This can cut breaths and softly spoken words. Choose a gentler level if you hear clipped speech.'],
+  ['Strong', 'Skip pauses lasting at least 0.15 seconds, including louder room tone. Leave about 0.01 seconds before the next sound. This can cut breaths and softly spoken words. Choose a gentler level if you hear clipped speech.'],
   ['Updating analysis', 'For a previously analysed book, choose Update pause analysis to enable the new Strong detection. Keep the app visible during analysis.'],
   ['Time remaining', 'Chapter position uses the original recording timeline. Remaining times account for playback speed and are estimates before quiet skipping. Books without chapter metadata show unavailable chapter times.'],
   ['On your device', 'Audio and analysis stay on this device. Background quiet skipping is still being tested on iPhone.']
@@ -62,8 +67,8 @@ settingsView.append(diagnostics);
 document.querySelector('main')!.append(document.querySelector('footer')!);
 document.querySelector('.intro')!.remove();
 function navigate() {
-  const name = location.hash.slice(2) || 'library';
-  const selected = views.has(name) ? name : 'library';
+  const name = location.hash.slice(2) || 'player';
+  const selected = views.has(name) ? name : 'player';
   for (const [key, view] of views) view.hidden = key !== selected;
   for (const link of navigation.querySelectorAll('a')) {
     if (link.hash === `#/${selected}`) link.setAttribute('aria-current', 'page');
@@ -85,7 +90,7 @@ let current: Book | null = null, file: File | null = null, sourceUrl = '', synth
 let worker: Worker | null = null, runId = 0, busy = false, books: Book[] = [], session: Session | null = null;
 let lastTick = 0, lastSaved = 0, lastSessionSaved = 0, seekingBySkip = false, skipRequestAt = 0;
 let generation = 0, toastTimer = 0, sourceReady = false;
-const VERSION = '0.4.0';
+const VERSION = '0.4.1';
 let stage = 'Choose a book', decoder = 'untested';
 let requested = 0, completed = 0, missed = 0;
 let pending: { from: number; target: number } | null = null;
@@ -137,8 +142,8 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
   $('analysis-percent').textContent = current.complete ? 'Ready' : `${Math.round(fraction*100)}%`;
   const count = current.maps[strength.value === 'off' ? 'conservative' : strength.value as keyof Maps].length;
   $('analysis-status').textContent = synthetic ? 'Known pauses in generated test audio.' : `${count.toLocaleString()} quiet intervals · ${time(progress)} analysed. ${current.complete ? 'Ready for playback.' : 'Complete analysis to enable quiet skipping.'}`;
-  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || (current.complete && current.analysisVersion === 2);
-  $('analyse').textContent = current.analysisVersion !== 2 && current.analyzedUntil > 0 ? 'Update pause analysis' : current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
+  $<HTMLButtonElement>('analyse').disabled = synthetic || !!worker || !file || (current.complete && current.analysisVersion === 3);
+  $('analyse').textContent = current.analysisVersion !== 3 && current.analyzedUntil > 0 ? 'Update pause analysis' : current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
   $('cancel').hidden = !worker;
   strength.disabled = !!current.analysisError || !current.complete;
   if (current.analysisError) $('analysis-percent').textContent = 'Failed';
@@ -231,11 +236,11 @@ $('demo').onclick = () => {
 };
 $('analyse').onclick = () => {
   if (!file || !current || worker || synthetic) return;
-  if (current.analysisVersion !== 2) {
+  if (current.analysisVersion !== 3) {
     current.maps = emptyMaps();
     current.analyzedUntil = 0;
     current.complete = false;
-    current.analysisVersion = 2;
+    current.analysisVersion = 3;
   }
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = w; const run = ++runId, book = current;
   let first = true; const began = performance.now();

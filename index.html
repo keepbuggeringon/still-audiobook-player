@@ -17,9 +17,9 @@
       <div class="layout">
         <section class="card player" aria-labelledby="player-title">
           <div class="card-top"><span class="eyebrow">NOW LISTENING</span><span id="source-kind" class="pill">No file selected</span></div>
-          <div class="book-art" aria-hidden="true"><div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>MAKE ROOM<br>FOR THE STORY.</span></div>
           <h2 id="player-title">Bring your own book</h2><p id="book-info" class="muted">M4B · up to 1 GB · embedded chapters</p>
-          <label class="file-button">Choose an audiobook<input id="file" type="file" accept=".m4b,.m4a,.mp4,.m4p,audio/mp4,video/mp4"></label>
+          <label class="file-button">Choose an audiobook<input id="file" type="file" aria-describedby="file-help"></label>
+          <p id="file-help" class="tiny">Browse all files to avoid iPhone file-type filtering. Choose an M4B, M4A, or MP4 audiobook. Protected files require a compatible authorised player.</p>
           <p class="tiny">Select again after a full reload. Saved analysis and progress will reconnect to the same file.</p>
           <div class="transport"><input id="seek" type="range" min="0" max="1" value="0" step=".1" aria-label="Playback position" disabled><div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div><div class="buttons"><button id="back" disabled aria-label="Rewind">−15s</button><button id="play" class="primary play" disabled>Play</button><button id="forward" disabled aria-label="Forward">+30s</button></div></div>
           <div class="settings-row"><label>Speed<select id="speed"><option value=".75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="2.5">2.5×</option></select></label><label>Seek buttons<select id="seek-step"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="45">45 seconds</option><option value="60">60 seconds</option></select></label><label>Quiet skipping<select id="strength"><option value="off">Off</option><option value="conservative" selected>Conservative</option><option value="balanced">Balanced</option><option value="strong">Strong</option></select></label><label>Appearance<select id="theme"><option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
@@ -52,7 +52,7 @@
         <details><summary>Recent diagnostic events</summary><pre id="diagnostic-events"></pre></details>
       </section>
       <p id="message" role="status" aria-live="polite"></p>
-      <footer>Build 0.4.0 · Background skipping is under test.</footer>
+      <footer>Build 0.4.1 · Background skipping is under test.</footer>
     </main>
   </div>
 </body>

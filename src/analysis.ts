@@ -3,7 +3,7 @@ export type Strength = 'off' | 'conservative' | 'balanced' | 'strong';
 export const profiles = {
   conservative: { db: -48, minimum: 1.2, padding: .30 },
   balanced: { db: -43, minimum: .9, padding: .22 },
-  strong: { db: -35, minimum: .30, padding: .02 },
+  strong: { db: -32, minimum: .15, padding: .01 },
 } as const;
 export type Maps = Record<Exclude<Strength, 'off'>, Interval[]>;
 export const emptyMaps = (): Maps => ({ conservative: [], balanced: [], strong: [] });

@@ -102,3 +102,35 @@ html[data-accent] button:focus-visible, html[data-accent] select:focus-visible, 
 #about h2 { font-size: 16px; line-height: 1.35; letter-spacing: 0; margin-top: 18px; }
 #about .card > .tiny { margin: 0 0 10px; }
 html[data-theme=dark] .book-actions { background: #192421; border-color: #30423a; }
+
+/* Accent palettes keep surfaces, text, borders, and controls readable together. */
+html[data-accent=green] { --page-bg: #f2f5f3; --surface: #ffffff; --surface-soft: #e8f1e9; --ink: #19352f; --muted-ink: #52665b; --line: #cbd9cf; --accent: #286b4b; --accent-soft: #dceee1; --accent-contrast: #ffffff; }
+html[data-accent=purple] { --page-bg: #f7f4fb; --surface: #ffffff; --surface-soft: #f0e9f8; --ink: #30243f; --muted-ink: #665675; --line: #d8cae5; --accent: #6b4aa1; --accent-soft: #e9def5; --accent-contrast: #ffffff; }
+html[data-accent=blue] { --page-bg: #f2f6fb; --surface: #ffffff; --surface-soft: #e7eff9; --ink: #1e3047; --muted-ink: #53677e; --line: #c9d8e9; --accent: #2563a8; --accent-soft: #dceafa; --accent-contrast: #ffffff; }
+html[data-accent=turquoise] { --page-bg: #f1f8f8; --surface: #ffffff; --surface-soft: #e1f1f0; --ink: #173b3b; --muted-ink: #4f6d6d; --line: #c3dedd; --accent: #087f83; --accent-soft: #d4efed; --accent-contrast: #ffffff; }
+html[data-accent=aqua] { --page-bg: #f1f8fb; --surface: #ffffff; --surface-soft: #e3f1f7; --ink: #183743; --muted-ink: #52707b; --line: #c6dce5; --accent: #167f9d; --accent-soft: #d9edf4; --accent-contrast: #ffffff; }
+html[data-accent=grey] { --page-bg: #f4f5f6; --surface: #ffffff; --surface-soft: #e9ecef; --ink: #2b3036; --muted-ink: #626b74; --line: #d0d5da; --accent: #5b6470; --accent-soft: #e1e5e9; --accent-contrast: #ffffff; }
+
+html[data-theme=dark][data-accent=green] { --page-bg: #101816; --surface: #192421; --surface-soft: #21332a; --ink: #e9f3eb; --muted-ink: #b4c6ba; --line: #3b5146; --accent: #83d2a3; --accent-soft: #294737; --accent-contrast: #10251a; }
+html[data-theme=dark][data-accent=purple] { --page-bg: #17131e; --surface: #241d2d; --surface-soft: #332642; --ink: #f1eafa; --muted-ink: #c8b9d5; --line: #554266; --accent: #c5a5f1; --accent-soft: #483263; --accent-contrast: #241633; }
+html[data-theme=dark][data-accent=blue] { --page-bg: #111a27; --surface: #1a2738; --surface-soft: #233852; --ink: #e8f1ff; --muted-ink: #b8c9df; --line: #3e5874; --accent: #8dbcf1; --accent-soft: #2d4c70; --accent-contrast: #10243a; }
+html[data-theme=dark][data-accent=turquoise] { --page-bg: #0e1b1c; --surface: #17292a; --surface-soft: #204344; --ink: #e5f6f5; --muted-ink: #b1cfce; --line: #3a5b5b; --accent: #79d7d2; --accent-soft: #285d5c; --accent-contrast: #0d3031; }
+html[data-theme=dark][data-accent=aqua] { --page-bg: #0e1a20; --surface: #172a32; --surface-soft: #21404d; --ink: #e6f5fa; --muted-ink: #b3d0d9; --line: #3b5d68; --accent: #84d2e9; --accent-soft: #2b5d6d; --accent-contrast: #10313d; }
+html[data-theme=dark][data-accent=grey] { --page-bg: #17191c; --surface: #24282d; --surface-soft: #343a41; --ink: #f0f2f4; --muted-ink: #c0c6cc; --line: #4a5159; --accent: #c5cbd3; --accent-soft: #414952; --accent-contrast: #25292e; }
+
+html[data-accent] body { background: var(--page-bg); color: var(--ink); }
+html[data-theme=dark][data-accent] body { background: var(--page-bg); color: var(--ink); }
+html[data-accent] header { background: var(--page-bg); border-color: var(--line); }
+html[data-accent] .card, html[data-accent] .page-view > .settings-row { background: var(--surface); border-color: var(--line); color: var(--ink); }
+html[data-accent] .tiny, html[data-accent] .muted, html[data-accent] .lede, html[data-accent] .times, html[data-accent] footer { color: var(--muted-ink); }
+html[data-accent] button, html[data-accent] .file-button, html[data-accent] select, html[data-accent] textarea { background: var(--surface); color: var(--ink); border-color: var(--line); }
+html[data-accent] button:hover, html[data-accent] .file-button:hover { background: var(--surface-soft); }
+html[data-accent] .secondary, html[data-accent] .buttons button:not(.primary) { background: var(--surface-soft); color: var(--ink); }
+html[data-accent] .file-button, html[data-accent] .analysis-box { background: var(--surface-soft); }
+html[data-accent] .analysis-box, html[data-accent] details, html[data-accent] .metrics { border-color: var(--line); }
+html[data-accent] .book-actions, html[data-accent] dialog { background: var(--surface); color: var(--ink); border-color: var(--line); }
+html[data-accent] .book-menu summary, html[data-accent] .text-button { color: var(--accent); }
+html[data-accent] .play, html[data-accent] .page-navigation a[aria-current=page] { background: var(--accent); color: var(--accent-contrast, #ffffff); border-color: var(--accent); }
+html[data-accent] .play:hover, html[data-accent] .page-navigation a[aria-current=page]:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
+html[data-accent] .status-ring { border-color: var(--accent); }
+html[data-accent] .book-cover { background: var(--surface-soft); }

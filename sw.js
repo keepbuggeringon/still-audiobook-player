@@ -1,4 +1,4 @@
-const NAME="still-ecd648635291", ASSETS=["./assets/icon-xpe_vdcm.svg","./assets/index-CnPVxMef.css","./assets/index-CvFCJhzX.js","./assets/manifest-1lV9o5oC.webmanifest","./assets/worker-CL2vMXLj.js","./icon.svg","./index.html","./manifest.webmanifest"];
+const NAME="still-b95a02d08a95", ASSETS=["./assets/index-CiG7qVw8.js","./assets/index-CnPVxMef.css","./assets/worker-ByHxBuT5.js","./icon.svg","./index.html","./manifest.webmanifest","./quiet-test.m4a"];
 self.addEventListener('install',e=>e.waitUntil(caches.open(NAME).then(c=>c.addAll(ASSETS))));
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('still-')&&k!==NAME).map(k=>caches.delete(k)))),self.clients.claim()])));
 self.addEventListener('fetch',e=>{

@@ -32,11 +32,12 @@ html[data-theme=dark] header { background: #101816; }
 .player { padding: 18px; }
 .player-heading, .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .player-heading h2 { margin: 0; font-size: 26px; overflow-wrap: anywhere; }
-#show-chapters { flex-shrink: 0; padding: 4px 12px; font-size: 26px; }
-#current-chapter { margin: 0 0 12px; font-size: 16px; }
-.player .transport { padding: 20px 0 8px; }
+#show-chapters { flex-shrink: 0; padding: 2px 6px; font-size: 16px; min-height: 32px; }
+#player-title { font-weight: 700; }
+#current-chapter { margin: 0 0 8px; font-size: 16px; font-weight: 400; }
+.player .transport { padding: 8px 0 8px; }
 .player .play { min-width: 64px; width: 64px; height: 64px; padding: 0; font-size: 26px; border-radius: 50%; }
-.book-remaining { margin: 16px 0 0; text-align: center; font-size: 12px; opacity: .75; }
+.book-remaining { margin: 0; text-align: center; font-size: 12px; opacity: .75; }
 .player .settings-row { padding-top: 16px; gap: 12px; grid-template-columns: 1fr 1fr; }
 #quiet-status:empty { display: none; }
 html[data-page=player] footer { display: none; }
@@ -73,7 +74,7 @@ body, button, select, textarea, input { font-family: Inter, -apple-system, Blink
 h1, h2, .brand { font-family: inherit; letter-spacing: -0.6px; }
 .library-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .library-title h1 { margin-bottom: 0; }
-.add-book { width: 44px; min-height: 44px; padding: 0; border-radius: 50%; font-size: 28px; line-height: 1; }
+.add-book { width: 32px; min-height: 32px; height: 32px; padding: 0; border-radius: 50%; font-size: 20px; line-height: 1; }
 .book-row { display: flex; align-items: center; gap: 8px; }
 .book-open { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; border: 0; background: transparent; padding: 8px 0; text-align: left; font-weight: 500; }
 .book-open:hover { background: transparent; }
@@ -88,6 +89,14 @@ h1, h2, .brand { font-family: inherit; letter-spacing: -0.6px; }
 .play-symbol { display: block; width: 0; height: 0; margin-left: 4px; border-top: 11px solid transparent; border-bottom: 11px solid transparent; border-left: 16px solid currentColor; }
 .play.is-playing .play-symbol { width: 15px; height: 20px; margin-left: 0; border: 0; background: linear-gradient(90deg, currentColor 0 4px, transparent 4px 10px, currentColor 10px 14px); }
 #clear { width: 100%; margin-top: 18px; }
+.settings-clear { margin-top: 16px; border: 0; }
+.settings-clear summary { color: var(--accent); font-size: 16px; }
+.settings-clear #clear { margin-top: 10px; }
+.page-view .small { padding: 12px; margin: 0; }
+.page-view .small details { padding-top: 0; }
+.page-view .small #library li { padding: 4px 0; }
+#about .card h2 { font-size: 16px; font-weight: 600; }
+#about .card p { font-size: 12px; font-weight: 400; line-height: 1.5; }
 html[data-accent=purple] { --accent: #6b4aa1; } html[data-accent=blue] { --accent: #2563a8; } html[data-accent=turquoise] { --accent: #087f83; } html[data-accent=aqua] { --accent: #167f9d; } html[data-accent=grey] { --accent: #5b6470; } html[data-accent=green] { --accent: #315e47; }
 html[data-accent] .primary, html[data-accent] .page-navigation a[aria-current=page] { background: var(--accent); border-color: var(--accent); }
 html[data-accent] .brand, html[data-accent] .eyebrow, html[data-accent] label, html[data-accent] .book-menu summary { color: var(--accent); }

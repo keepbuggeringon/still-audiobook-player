@@ -296,7 +296,7 @@ async function loadFile(selected: File, importAudio = true) {
     sourceReady = false;
     const fileCheck = checkAudioFile(selected.name, selected.type);
     if (!fileCheck.ok) throw Error(fileCheck.message);
-    if (selected.size > 1.1e9) throw Error('Phase 1 is scoped to files up to approximately 1 GB. This file is larger.');
+    if (selected.size > 2e9) throw Error('Still currently supports audiobook files up to approximately 2 GB. This file is larger.');
     if (!isSecureContext || !crypto.subtle) throw Error('Open the HTTPS test site. A plain HTTP network address cannot run the full offline/analysis test.');
     say('Reading the book’s local identity and chapters…', true);
     const id = await fingerprint(selected);

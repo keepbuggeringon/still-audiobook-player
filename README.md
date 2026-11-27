@@ -24,7 +24,7 @@ Record Chrome version, iOS version as shown in Settings, power mode, battery per
 | Sustained playback | 60 minutes locked without audio stopping or quiet skipping reverting to long pauses. Repeat on separate occasions. |
 | Other apps and Bluetooth | Skipping survives switching away; supported remote play/pause/seek controls work and position remains correct. |
 | All four original books | Each opens, has expected chapters, plays, seeks and resumes correctly. Record each codec/compatibility failure. |
-| Largest book (~1 GB) | Opens without tab termination; analysis completes without a crash. Measure elapsed time, battery and warmth. |
+| Largest book (~2 GB) | Opens without tab termination; analysis completes without a crash. Measure elapsed time, battery and warmth. |
 | Cancel/resume analysis | Stop partway, reload, reselect same original, resume; completed regions still work and coverage finishes. |
 | Progress restoration | Pause at a known time, reload, select the same file; position returns within five seconds. |
 | Offline | After App cached, enable Airplane Mode with Wi-Fi off, reload, select a downloaded original, and play/analyse. Leave Bluetooth enabled if needed. |
@@ -52,7 +52,7 @@ A single repeated locked-screen failure rejects the current approach for the ess
 - Eight automated tests passed: long/short quiet spans, channel cancellation, low-volume preservation at the chosen threshold, padding/Off, safe analysis checkpoints, discontinuous audio, generated diagnostic audio, and synthetic Nero M4B chapter timestamps.
 - Strict TypeScript and the production build passed.
 - Browser UI at a 390-pixel viewport opened the diagnostic, played it, recorded skip requests, and stopped a session. This was desktop browser execution, not iPhone hardware.
-- M4B audio decoding, QuickTime chapter-track variants, 1 GB performance, offline phone reopening, Bluetooth, and sustained locked-screen skipping are **not verified**. The synthetic chapter test does not validate all chapter formats or real audio decoding.
+- M4B audio decoding, QuickTime chapter-track variants, 2 GB performance, offline phone reopening, Bluetooth, and sustained locked-screen skipping are **not verified**. The synthetic chapter test does not validate all chapter formats or real audio decoding.
 
 ## Local development
 

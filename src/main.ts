@@ -10,7 +10,16 @@ const views = new Map<string, HTMLElement>();
 for (const name of ['player', 'library', 'settings', 'about']) {
   const link = document.createElement('a');
   link.href = `#/${name}`;
-  link.textContent = name[0].toUpperCase() + name.slice(1);
+  const labels: Record<string, string> = { player: 'Player', library: 'Library', settings: 'Settings', about: 'About' };
+  const icons: Record<string, string> = {
+    player: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5-10-6.5Z"/></svg>',
+    library: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h13v3H5zM4 10.5h14v3H4zM6 15.5h12v3H6z"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.7 3.8.6 1.7a7.4 7.4 0 0 1 2.4 0l.6-1.7 2.1.9-.7 1.7c.7.5 1.3 1.1 1.8 1.8l1.7-.7.9 2.1-1.7.6a7.4 7.4 0 0 1 0 2.4l1.7.6-.9 2.1-1.7-.7a7.4 7.4 0 0 1-1.8 1.8l.7 1.7-2.1.9-.6-1.7a7.4 7.4 0 0 1-2.4 0l-.6 1.7-2.1-.9.7-1.7a7.4 7.4 0 0 1-1.8-1.8l-1.7.7-.9-2.1 1.7-.6a7.4 7.4 0 0 1 0-2.4l-1.7-.6.9-2.1 1.7.7a7.4 7.4 0 0 1 1.8-1.8l-.7-1.7 2.1-.9ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
+    about: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 10.5v5"/><circle cx="12" cy="7.5" r=".8" class="nav-dot"/></svg>'
+  };
+  link.innerHTML = `${icons[name]}<span class="sr-only">${labels[name]}</span>`;
+  link.setAttribute('aria-label', labels[name]);
+  link.title = labels[name];
   navigation.append(link);
   const view = document.createElement('section');
   view.className = 'page-view';

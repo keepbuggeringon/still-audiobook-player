@@ -42,6 +42,9 @@ const clearSection = document.createElement('details'); clearSection.className =
 const clearSummary = document.createElement('summary'); clearSummary.textContent = 'Remove local library';
 const clearLibrary = document.createElement('button'); clearLibrary.id = 'clear'; clearLibrary.textContent = 'Confirm, this cannot be undone';
 clearSection.append(clearSummary, clearLibrary); settingsView.append(clearSection);
+const backupSection = document.createElement('details'); backupSection.className = 'settings-backup';
+backupSection.innerHTML = `<summary>Backup and restore</summary><div class="backup-content"><p class="tiny">Save your local book metadata, progress, settings, bookmarks, notes, and covers. Audiobook audio is never included.</p><div class="backup-actions"><button id="backup-export" class="secondary">Export backup</button><label class="file-button backup-import">Import backup<input id="backup-import" type="file" accept="application/json,.json"></label></div><p id="backup-status" class="tiny" role="status"></p></div>`;
+settingsView.append(backupSection);
 const playerControls = document.createElement('div');
 playerControls.className = 'settings-row';
 playerControls.append(document.getElementById('speed')!.closest('label')!, document.getElementById('strength')!.closest('label')!);
@@ -194,6 +197,24 @@ function renderBookmarks() {
     li.append(jumpButton, note, remove); list.append(li);
   }
 }
+function validIntervals(value: unknown): [number, number][] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is [number, number] => Array.isArray(item) && item.length === 2 && Number.isFinite(item[0]) && Number.isFinite(item[1]) && item[0] >= 0 && item[1] > item[0]).map(item => [item[0], item[1]]);
+}
+function normaliseBackupBook(value: unknown): Book | null {
+  if (!value || typeof value !== 'object') return null;
+  const input = value as Partial<Book>;
+  if (typeof input.id !== 'string' || typeof input.filename !== 'string') return null;
+  const duration = Number.isFinite(input.duration) ? Math.max(0, Number(input.duration)) : 0;
+  const maps = emptyMaps();
+  for (const key of Object.keys(maps) as (keyof Maps)[]) maps[key] = validIntervals(input.maps?.[key]);
+  const chapters = Array.isArray(input.chapters) ? input.chapters.filter(ch => ch && typeof ch.title === 'string' && Number.isFinite(ch.start) && ch.start >= 0).map(ch => ({ title: ch.title.slice(0, 500), start: Number(ch.start) })).sort((a, b) => a.start - b.start) : [];
+  const bookmarks = Array.isArray(input.bookmarks) ? input.bookmarks.filter(mark => mark && typeof mark.id === 'string' && Number.isFinite(mark.position)).map(mark => ({ id: mark.id, position: Math.max(0, Math.min(duration, Number(mark.position))), chapter: typeof mark.chapter === 'string' ? mark.chapter.slice(0, 500) : undefined, note: typeof mark.note === 'string' ? mark.note.slice(0, 200) : '', created: Number.isFinite(mark.created) ? Number(mark.created) : Date.now() })) : [];
+  const customProfile = input.customProfile && Number.isFinite(input.customProfile.db) && Number.isFinite(input.customProfile.minimum) && Number.isFinite(input.customProfile.padding) ? { db: Number(input.customProfile.db), minimum: Math.max(.1, Number(input.customProfile.minimum)), padding: Math.max(0, Number(input.customProfile.padding)) } : { ...defaultCustomProfile };
+  const strength: Strength = ['off', 'conservative', 'balanced', 'strong', 'custom'].includes(input.strength as string) ? input.strength as Strength : 'conservative';
+  return { id: input.id, title: typeof input.title === 'string' ? input.title.slice(0, 500) : input.filename, filename: input.filename.slice(0, 500), size: Number.isFinite(input.size) ? Math.max(0, Number(input.size)) : 0, duration, chapters, maps, analyzedUntil: Math.max(0, Number(input.analyzedUntil) || 0), complete: input.complete === true, position: Math.max(0, Math.min(duration || Number.MAX_SAFE_INTEGER, Number(input.position) || 0)), strength, rate: Number.isFinite(input.rate) && Number(input.rate) > 0 ? Math.min(4, Math.max(.25, Number(input.rate))) : 1, updated: Number.isFinite(input.updated) ? Number(input.updated) : Date.now(), codec: typeof input.codec === 'string' ? input.codec.slice(0, 100) : undefined, container: typeof input.container === 'string' ? input.container.slice(0, 100) : undefined, customProfile, customMap: validIntervals(input.customMap), customAnalysisKey: typeof input.customAnalysisKey === 'string' ? input.customAnalysisKey.slice(0, 100) : undefined, bookmarks, cover: input.cover && typeof input.cover.mime === 'string' && typeof input.cover.data === 'string' ? { mime: input.cover.mime.slice(0, 100), data: input.cover.data } : undefined };
+}
+function backupStatus(message: string) { $('backup-status').textContent = message; }
 function say(message: string, persistent = false) { clearTimeout(toastTimer); if (!persistent) { $('message').textContent = ''; return; } $('message').textContent = message; }
 function fail(e: unknown) { say(e instanceof Error ? e.message : String(e), true); }
 function env() { return { version: VERSION, userAgent: navigator.userAgent, secureContext: isSecureContext, audioDecoder: 'AudioDecoder' in globalThis, mediaSession: 'mediaSession' in navigator, serviceWorker: 'serviceWorker' in navigator, standalone: matchMedia('(display-mode: standalone)').matches, language: navigator.language }; }
@@ -502,6 +523,35 @@ $('add-bookmark').onclick = () => {
 $('custom-reanalyse').onclick = () => {
   if (!current || !file || worker || strength.value !== 'custom') return;
   $('analyse').click();
+};
+$('backup-export').onclick = async () => {
+  try {
+    const books = await all<Book>('books');
+    const payload = { format: 'still-library-backup', version: 1, created: new Date().toISOString(), includesAudio: false, books };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = `still-library-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    backupStatus(`${books.length} book${books.length === 1 ? '' : 's'} exported. Audio was not included.`);
+  } catch (error) { backupStatus(error instanceof Error ? error.message : 'Backup export failed.'); }
+};
+$<HTMLInputElement>('backup-import').onchange = async event => {
+  const input = event.currentTarget as HTMLInputElement; const selected = input.files?.[0]; input.value = '';
+  if (!selected) return;
+  try {
+    if (selected.size > 10e6) throw Error('This backup is larger than 10 MB. Still backups contain metadata only.');
+    const payload = JSON.parse(await selected.text()) as { format?: string; version?: number; books?: unknown };
+    if (payload.format !== 'still-library-backup' || payload.version !== 1 || !Array.isArray(payload.books)) throw Error('This is not a Still library backup.');
+    const imported = payload.books.map(normaliseBackupBook).filter((book): book is Book => !!book);
+    if (!imported.length) throw Error('The backup did not contain valid book metadata.');
+    const existing = await all<Book>('books');
+    const overlap = imported.filter(book => existing.some(currentBook => currentBook.id === book.id)).length;
+    if (overlap && !confirm(`Replace metadata for ${overlap} existing book${overlap === 1 ? '' : 's'}? Local audio files will not be changed.`)) return;
+    for (const book of imported) await put('books', book);
+    const replacement = current && imported.find(book => book.id === current?.id);
+    if (replacement) { current = replacement; renderBook(); }
+    await renderLibrary();
+    backupStatus(`${imported.length} book${imported.length === 1 ? '' : 's'} restored. Re-select any book whose audio is not on this device.`);
+  } catch (error) { backupStatus(error instanceof Error ? error.message : 'Backup import failed.'); }
 };
 seekStep.onchange = () => { seekSeconds = Number(seekStep.value); localStorage.setItem('still-seek-seconds', String(seekSeconds)); $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`; event('seek-step', { value: seekSeconds }); };
 theme.onchange = () => { localStorage.setItem('still-theme', theme.value); applyTheme(theme.value); };

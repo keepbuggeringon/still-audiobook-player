@@ -271,6 +271,14 @@ html[data-accent] .page-navigation { border-color: var(--accent); }
 @font-face { font-family: 'Atkinson Hyperlegible Mono'; src: url('/still-audiobook-player/fonts/AtkinsonHyperlegibleMono-Bold.otf') format('opentype'); font-style: normal; font-weight: 700; font-display: swap; }
 html[data-accent] body, html[data-accent] button, html[data-accent] select, html[data-accent] textarea, html[data-accent] input { font-family: 'Atkinson Hyperlegible Mono', monospace; }
 html[data-accent] .settings-clear, html[data-accent] .settings-diagnostics { border: 1px solid var(--line) !important; box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 8%, transparent); }
+html[data-accent] .settings-backup { background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 8%, transparent); border-radius: 16px; margin: 12px 0; padding: 18px 24px; }
+html[data-accent] .settings-backup summary { color: var(--ink); font-size: 16px; font-weight: 600; }
+.backup-content { display: grid; gap: 12px; margin-top: 14px; }
+.backup-content p { margin: 0; }
+.backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.backup-import { text-align: center; }
+.backup-import input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+@media (max-width: 480px) { .backup-actions { grid-template-columns: 1fr; } }
 html[data-accent] header .brand { isolation: auto; padding: 0; background: transparent; }
 html[data-accent] header .brand-icon { mix-blend-mode: normal; filter: contrast(1.12) sepia(1) saturate(2.4) brightness(.62); }
 html[data-accent=green] header .brand-icon { filter: contrast(1.12) sepia(1) saturate(2.8) hue-rotate(55deg) brightness(.62); }

@@ -1,5 +1,6 @@
 import type { Maps, QuietProfile, Strength, Interval } from './analysis';
 export interface Chapter { title: string; start: number }
+export interface Bookmark { id: string; position: number; chapter?: string; note: string; created: number }
 export interface Book {
   analysisVersion?: number;
   analysisError?: string;
@@ -7,6 +8,7 @@ export interface Book {
   chapters: Chapter[]; maps: Maps; analyzedUntil: number; complete: boolean;
   position: number; strength: Strength; rate: number; updated: number; codec?: string; container?: string;
   customProfile?: QuietProfile; customMap?: Interval[]; customAnalysisKey?: string;
+  bookmarks?: Bookmark[];
   cover?: { mime: string; data: string };
 }
 export interface DiagnosticEvent { at: number; type: string; hidden: boolean; position: number; detail?: unknown }

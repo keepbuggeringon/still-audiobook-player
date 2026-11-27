@@ -41,6 +41,11 @@ const customControls = document.createElement('div');
 customControls.className = 'custom-controls card';
 customControls.innerHTML = `<div class="card-top"><strong>Custom quiet skipping</strong><span class="tiny">Per-book</span></div><p class="tiny">Start with the middle setting. Higher sensitivity catches more room tone; longer pauses and more retained silence sound more natural.</p><label>Sensitivity <output id="custom-sensitivity-value">3</output><input id="custom-sensitivity" type="range" min="1" max="5" step="1" value="3"></label><label>Minimum quiet pause <output id="custom-minimum-value">0.9s</output><input id="custom-minimum" type="range" min="0.3" max="2" step="0.1" value="0.9"></label><label>Silence to retain <output id="custom-padding-value">0.22s</output><input id="custom-padding" type="range" min="0.05" max="0.5" step="0.01" value="0.22"></label><button id="custom-reanalyse" class="primary">Re-analyze with these settings</button><button id="custom-preview" class="secondary">Preview first detected pause</button><p id="custom-status" class="tiny" role="status"></p>`;
 playerControls.after(customControls);
+const bookmarksPanel = document.createElement('section');
+bookmarksPanel.className = 'bookmarks-panel card';
+bookmarksPanel.innerHTML = `<div class="card-top"><strong>Bookmarks</strong><span id="bookmark-count" class="tiny"></span></div><div class="bookmark-entry"><input id="bookmark-note" type="text" maxlength="200" placeholder="Optional note"><button id="add-bookmark" class="primary">Add at current position</button></div><ul id="bookmarks-list"></ul><p id="bookmark-empty" class="tiny">No bookmarks for this book yet.</p>`;
+customControls.after(bookmarksPanel);
+bookmarksPanel.hidden = true;
 const aboutCard = document.createElement('section');
 aboutCard.className = 'card';
 views.get('about')!.id = 'about';
@@ -90,7 +95,7 @@ import { all, put, fingerprint, clearRecords, deleteBook, saveImportedBook, stor
 import { checkAudioFile } from './imports';
 import { confirmedSeek } from './seek-result';
 import { chapterWindow } from './chapter';
-import type { Book, Session } from './types';
+import type { Book, Session, Bookmark } from './types';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const audio = $<HTMLAudioElement>('audio'), strength = $<HTMLSelectElement>('strength'), speed = $<HTMLSelectElement>('speed'), seekStep = $<HTMLSelectElement>('seek-step'), theme = $<HTMLSelectElement>('theme'), accent = $<HTMLSelectElement>('accent');
@@ -162,7 +167,23 @@ function renderCustomControls() {
   $('custom-status').textContent = current.customAnalysisKey === profileKey(profile) && current.customMap?.length ? `${current.customMap.length.toLocaleString()} custom quiet intervals ready.` : 'Adjusting these controls requires a fresh local analysis.';
   reanalyse.hidden = !visible || !file || !!worker || current.customAnalysisKey === profileKey(profile);
 }
-function say(message: string, persistent = false) { clearTimeout(toastTimer); $('message').textContent = message; if (!persistent) toastTimer = window.setTimeout(() => $('message').textContent = '', 9000); }
+function renderBookmarks() {
+  bookmarksPanel.hidden = !current;
+  const list = $<HTMLUListElement>('bookmarks-list');
+  list.replaceChildren();
+  if (!current) return;
+  const bookmarks = (current.bookmarks || []).slice().sort((a, b) => a.position - b.position);
+  $('bookmark-count').textContent = bookmarks.length ? `${bookmarks.length}` : '';
+  $('bookmark-empty').hidden = bookmarks.length > 0;
+  for (const bookmark of bookmarks) {
+    const li = document.createElement('li'); li.className = 'bookmark-item';
+    const jumpButton = document.createElement('button'); jumpButton.className = 'bookmark-jump'; jumpButton.textContent = `${time(bookmark.position)} · ${bookmark.chapter || 'Bookmark'}`; jumpButton.onclick = () => jump(bookmark.position);
+    const note = document.createElement('span'); note.className = 'bookmark-note'; note.textContent = bookmark.note || 'No note';
+    const remove = document.createElement('button'); remove.className = 'bookmark-remove'; remove.textContent = '×'; remove.setAttribute('aria-label', 'Delete bookmark'); remove.onclick = () => { current!.bookmarks = (current!.bookmarks || []).filter(item => item.id !== bookmark.id); void saveBook(); renderBookmarks(); };
+    li.append(jumpButton, note, remove); list.append(li);
+  }
+}
+function say(message: string, persistent = false) { clearTimeout(toastTimer); if (!persistent) { $('message').textContent = ''; return; } $('message').textContent = message; }
 function fail(e: unknown) { say(e instanceof Error ? e.message : String(e), true); }
 function env() { return { version: VERSION, userAgent: navigator.userAgent, secureContext: isSecureContext, audioDecoder: 'AudioDecoder' in globalThis, mediaSession: 'mediaSession' in navigator, serviceWorker: 'serviceWorker' in navigator, standalone: matchMedia('(display-mode: standalone)').matches, language: navigator.language }; }
 function event(type: string, detail?: unknown) {
@@ -222,6 +243,7 @@ function renderBook() {
   if (!current.chapters.length) { const li = document.createElement('li'); li.textContent = synthetic ? 'No chapters in the generated test.' : 'No embedded chapters found. Record this as a compatibility issue if the source has chapters.'; list.append(li); }
   renderAnalysis();
   renderTiming();
+  renderBookmarks();
 }
 function renderMetrics() {
   $('skips').textContent = String(session?.skipped || 0); $('hidden-skips').textContent = String(session?.hiddenSkips || 0);
@@ -301,7 +323,6 @@ async function loadFile(selected: File, importAudio = true) {
     if (!fileCheck.ok) throw Error(fileCheck.message);
     if (selected.size > 2e9) throw Error('Still currently supports audiobook files up to approximately 2 GB. This file is larger.');
     if (!isSecureContext || !crypto.subtle) throw Error('Open the HTTPS test site. A plain HTTP network address cannot run the full offline/analysis test.');
-    say('Reading the book’s local identity and chapters…', true);
     const id = await fingerprint(selected);
     file = selected; synthetic = false;
     const saved = books.find(b => b.id === id);
@@ -456,6 +477,16 @@ $('custom-preview').onclick = () => {
     say('Analyse this book with Custom selected before previewing a pause.', true); return;
   }
   jump(current.customMap[0][0]); void audio.play().catch(fail); say('Previewing the first detected custom pause.');
+};
+$('add-bookmark').onclick = () => {
+  if (!current || !sourceReady) return;
+  const position = audio.currentTime || 0;
+  const chapter = chapterWindow(current.chapters, position, current.duration)?.title;
+  const note = $<HTMLInputElement>('bookmark-note').value.trim().slice(0, 200);
+  const bookmark: Bookmark = { id: crypto.randomUUID(), position, chapter, note, created: Date.now() };
+  current.bookmarks = [...(current.bookmarks || []), bookmark];
+  $<HTMLInputElement>('bookmark-note').value = '';
+  void saveBook(); renderBookmarks();
 };
 $('custom-reanalyse').onclick = () => {
   if (!current || !file || worker || strength.value !== 'custom') return;

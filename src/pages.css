@@ -266,3 +266,7 @@ html[data-accent] .page-navigation { border-color: var(--accent); }
 .bookmark-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-ink); font-size: 12px; }
 .bookmark-remove { border: 0; min-height: 32px; width: 32px; padding: 0; border-radius: 8px; background: transparent; color: var(--muted-ink); font-size: 20px; }
 @media (max-width: 480px) { .bookmark-entry { grid-template-columns: 1fr; } .bookmark-entry button { width: 100%; } }
+
+@font-face { font-family: 'Atkinson Hyperlegible Mono'; src: url('/still-audiobook-player/fonts/AtkinsonHyperlegibleMono-Regular.otf') format('opentype'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Atkinson Hyperlegible Mono'; src: url('/still-audiobook-player/fonts/AtkinsonHyperlegibleMono-Bold.otf') format('opentype'); font-style: normal; font-weight: 700; font-display: swap; }
+html[data-accent] body, html[data-accent] button, html[data-accent] select, html[data-accent] textarea, html[data-accent] input { font-family: 'Atkinson Hyperlegible Mono', monospace; }

@@ -242,14 +242,20 @@ header .brand { gap: 10px; }
   .player .buttons #back, .player .buttons #forward { width: 64px; min-width: 64px; }
   .player .play { width: 64px !important; min-width: 64px !important; height: 64px !important; }
 }
-.custom-controls { display: grid; gap: 12px; margin-top: 16px; padding: 18px; border-radius: 16px; background: var(--surface-soft); }
+.custom-controls { display: block; gap: 12px; margin-top: 16px; padding: 18px; border-radius: 16px; background: var(--surface-soft); }
 .custom-controls[hidden] { display: none; }
-.custom-controls .card-top { margin-bottom: -2px; }
+.custom-controls > summary, .bookmarks-panel > summary { list-style: none; cursor: pointer; font-weight: 600; font-size: 16px; }
+.custom-controls > summary::-webkit-details-marker, .bookmarks-panel > summary::-webkit-details-marker { display: none; }
+.custom-controls > summary::after, .bookmarks-panel > summary::after { content: '⌄'; float: right; color: var(--muted-ink); }
+.custom-controls:not([open]) > summary::after, .bookmarks-panel:not([open]) > summary::after { content: '›'; }
+.custom-content, .bookmarks-content { display: grid; gap: 12px; margin-top: 14px; }
 .custom-controls label { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; align-items: center; }
 .custom-controls output { color: var(--accent); font-variant-numeric: tabular-nums; }
-.custom-controls input[type=range] { grid-column: 1 / -1; width: 100%; }
+.custom-controls .control-help { grid-column: 1 / -1; grid-row: 2; color: var(--muted-ink); font-size: 12px; }
+.custom-controls label output { grid-column: 2; grid-row: 1; }
+.custom-controls input[type=range] { grid-column: 1 / -1; grid-row: 3; width: 100%; }
 .custom-controls .secondary { min-height: 40px; margin-top: 4px; }
-.bookmarks-panel { display: grid; gap: 12px; margin-top: 16px; padding: 18px; border-radius: 16px; }
+.bookmarks-panel { display: block; gap: 12px; margin-top: 16px; padding: 18px; border-radius: 16px; border: 0; }
 .bookmarks-panel[hidden] { display: none; }
 .bookmark-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .bookmark-entry input { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--ink); font: inherit; }

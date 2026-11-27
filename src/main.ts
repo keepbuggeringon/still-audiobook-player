@@ -37,13 +37,15 @@ const playerControls = document.createElement('div');
 playerControls.className = 'settings-row';
 playerControls.append(document.getElementById('speed')!.closest('label')!, document.getElementById('strength')!.closest('label')!);
 document.querySelector('.transport')!.after(playerControls);
-const customControls = document.createElement('div');
+const customControls = document.createElement('details');
 customControls.className = 'custom-controls card';
-customControls.innerHTML = `<div class="card-top"><strong>Custom quiet skipping</strong><span class="tiny">Per-book</span></div><p class="tiny">Start with the middle setting. Higher sensitivity catches more room tone; longer pauses and more retained silence sound more natural.</p><label>Sensitivity <output id="custom-sensitivity-value">3</output><input id="custom-sensitivity" type="range" min="1" max="5" step="1" value="3"></label><label>Minimum quiet pause <output id="custom-minimum-value">0.9s</output><input id="custom-minimum" type="range" min="0.3" max="2" step="0.1" value="0.9"></label><label>Silence to retain <output id="custom-padding-value">0.22s</output><input id="custom-padding" type="range" min="0.05" max="0.5" step="0.01" value="0.22"></label><button id="custom-reanalyse" class="primary">Re-analyze with these settings</button><button id="custom-preview" class="secondary">Preview first detected pause</button><p id="custom-status" class="tiny" role="status"></p>`;
+customControls.innerHTML = `<summary>Custom quiet skipping</summary><div class="custom-content"><label>Sensitivity <span class="control-help">(how much background sound counts as quiet)</span><output id="custom-sensitivity-value">3</output><input id="custom-sensitivity" type="range" min="1" max="5" step="1" value="3"></label><label>Minimum quiet pause <span class="control-help">(shortest pause to skip)</span><output id="custom-minimum-value">0.9s</output><input id="custom-minimum" type="range" min="0.3" max="2" step="0.1" value="0.9"></label><label>Silence to retain <span class="control-help">(silence left before speech)</span><output id="custom-padding-value">0.22s</output><input id="custom-padding" type="range" min="0.05" max="0.5" step="0.01" value="0.22"></label><button id="custom-reanalyse" class="primary">Re-analyze with these settings</button><button id="custom-preview" class="secondary">Preview first detected pause</button><p id="custom-status" class="tiny" role="status"></p></div>`;
+customControls.open = true;
 playerControls.after(customControls);
-const bookmarksPanel = document.createElement('section');
+const bookmarksPanel = document.createElement('details');
 bookmarksPanel.className = 'bookmarks-panel card';
-bookmarksPanel.innerHTML = `<div class="card-top"><strong>Bookmarks</strong><span id="bookmark-count" class="tiny"></span></div><div class="bookmark-entry"><input id="bookmark-note" type="text" maxlength="200" placeholder="Optional note"><button id="add-bookmark" class="primary">Add at current position</button></div><ul id="bookmarks-list"></ul><p id="bookmark-empty" class="tiny">No bookmarks for this book yet.</p>`;
+bookmarksPanel.innerHTML = `<summary>Bookmarks <span id="bookmark-count" class="tiny"></span></summary><div class="bookmarks-content"><div class="bookmark-entry"><input id="bookmark-note" type="text" maxlength="200" placeholder="Optional note"><button id="add-bookmark" class="primary">Add at current position</button></div><ul id="bookmarks-list"></ul><p id="bookmark-empty" class="tiny">No bookmarks for this book yet.</p></div>`;
+bookmarksPanel.open = true;
 customControls.after(bookmarksPanel);
 bookmarksPanel.hidden = true;
 const aboutCard = document.createElement('section');
@@ -164,7 +166,7 @@ function renderCustomControls() {
   $('custom-sensitivity-value').textContent = String(sensitivity);
   $('custom-minimum-value').textContent = `${profile.minimum.toFixed(1)}s`;
   $('custom-padding-value').textContent = `${profile.padding.toFixed(2)}s`;
-  $('custom-status').textContent = current.customAnalysisKey === profileKey(profile) && current.customMap?.length ? `${current.customMap.length.toLocaleString()} custom quiet intervals ready.` : 'Adjusting these controls requires a fresh local analysis.';
+  $('custom-status').textContent = current.customAnalysisKey === profileKey(profile) ? '' : 'Changes need local re-analysis.';
   reanalyse.hidden = !visible || !file || !!worker || current.customAnalysisKey === profileKey(profile);
 }
 function renderBookmarks() {

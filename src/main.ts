@@ -39,8 +39,8 @@ playerControls.append(document.getElementById('speed')!.closest('label')!, docum
 document.querySelector('.transport')!.after(playerControls);
 const customControls = document.createElement('div');
 customControls.className = 'custom-controls card';
-customControls.innerHTML = `<div class="card-top"><strong>Custom quiet skipping</strong><span class="tiny">Per-book</span></div><p class="tiny">Start with the middle setting. Higher sensitivity catches more room tone; longer pauses and more retained silence sound more natural.</p><label>Sensitivity <output id="custom-sensitivity-value">3</output><input id="custom-sensitivity" type="range" min="1" max="5" step="1" value="3"></label><label>Minimum quiet pause <output id="custom-minimum-value">0.9s</output><input id="custom-minimum" type="range" min="0.3" max="2" step="0.1" value="0.9"></label><label>Silence to retain <output id="custom-padding-value">0.22s</output><input id="custom-padding" type="range" min="0.05" max="0.5" step="0.01" value="0.22"></label><button id="custom-preview" class="secondary">Preview first detected pause</button><p id="custom-status" class="tiny" role="status"></p>`;
-document.querySelector('.transport')!.after(customControls);
+customControls.innerHTML = `<div class="card-top"><strong>Custom quiet skipping</strong><span class="tiny">Per-book</span></div><p class="tiny">Start with the middle setting. Higher sensitivity catches more room tone; longer pauses and more retained silence sound more natural.</p><label>Sensitivity <output id="custom-sensitivity-value">3</output><input id="custom-sensitivity" type="range" min="1" max="5" step="1" value="3"></label><label>Minimum quiet pause <output id="custom-minimum-value">0.9s</output><input id="custom-minimum" type="range" min="0.3" max="2" step="0.1" value="0.9"></label><label>Silence to retain <output id="custom-padding-value">0.22s</output><input id="custom-padding" type="range" min="0.05" max="0.5" step="0.01" value="0.22"></label><button id="custom-reanalyse" class="primary">Re-analyze with these settings</button><button id="custom-preview" class="secondary">Preview first detected pause</button><p id="custom-status" class="tiny" role="status"></p>`;
+playerControls.after(customControls);
 const aboutCard = document.createElement('section');
 aboutCard.className = 'card';
 views.get('about')!.id = 'about';
@@ -148,6 +148,8 @@ function customProfileFromControls(): QuietProfile {
 function renderCustomControls() {
   const visible = strength.value === 'custom';
   customControls.hidden = !visible;
+  const reanalyse = $<HTMLButtonElement>('custom-reanalyse');
+  reanalyse.hidden = !visible || !current || !file || !!worker;
   if (!current) return;
   const profile = ensureCustomProfile(current);
   const sensitivity = Math.max(1, [-50, -46, -43, -40, -36].indexOf(profile.db) + 1);
@@ -158,6 +160,7 @@ function renderCustomControls() {
   $('custom-minimum-value').textContent = `${profile.minimum.toFixed(1)}s`;
   $('custom-padding-value').textContent = `${profile.padding.toFixed(2)}s`;
   $('custom-status').textContent = current.customAnalysisKey === profileKey(profile) && current.customMap?.length ? `${current.customMap.length.toLocaleString()} custom quiet intervals ready.` : 'Adjusting these controls requires a fresh local analysis.';
+  reanalyse.hidden = !visible || !file || !!worker || current.customAnalysisKey === profileKey(profile);
 }
 function say(message: string, persistent = false) { clearTimeout(toastTimer); $('message').textContent = message; if (!persistent) toastTimer = window.setTimeout(() => $('message').textContent = '', 9000); }
 function fail(e: unknown) { say(e instanceof Error ? e.message : String(e), true); }
@@ -329,7 +332,7 @@ async function loadFile(selected: File, importAudio = true) {
       void saveBook();
       void renderLibrary().catch(fail);
     }
-    say(storageWarning || 'Book ready. Press Play to continue.', !!storageWarning);
+    if (storageWarning) say(storageWarning, true);
     if (!saved?.container || !saved.cover) {
       const metaWorker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); worker = metaWorker; renderAnalysis();
       metaWorker.onmessage = ({ data }) => {
@@ -344,7 +347,7 @@ async function loadFile(selected: File, importAudio = true) {
       };
       metaWorker.onerror = e => { if (worker === metaWorker) { stopWorker(); stage = 'Metadata inspection failed: ' + workerError(e); trace('metadata-error', workerError(e)); renderAnalysis(); fail(stage); } };
       metaWorker.postMessage({ type: 'inspect', file: selected });
-    } else { say(storageWarning || 'Book ready at your saved position. Press Play to continue.', !!storageWarning); }
+    } else if (storageWarning) say(storageWarning, true);
   } catch (e) { fail(e); }
   finally { busy = false; }
 }
@@ -453,6 +456,10 @@ $('custom-preview').onclick = () => {
     say('Analyse this book with Custom selected before previewing a pause.', true); return;
   }
   jump(current.customMap[0][0]); void audio.play().catch(fail); say('Previewing the first detected custom pause.');
+};
+$('custom-reanalyse').onclick = () => {
+  if (!current || !file || worker || strength.value !== 'custom') return;
+  $('analyse').click();
 };
 seekStep.onchange = () => { seekSeconds = Number(seekStep.value); localStorage.setItem('still-seek-seconds', String(seekSeconds)); $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`; event('seek-step', { value: seekSeconds }); };
 theme.onchange = () => { localStorage.setItem('still-theme', theme.value); applyTheme(theme.value); };

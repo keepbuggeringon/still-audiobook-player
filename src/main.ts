@@ -13,9 +13,9 @@ for (const name of ['player', 'library', 'settings', 'about']) {
   const labels: Record<string, string> = { player: 'Player', library: 'Library', settings: 'Settings', about: 'About' };
   const icons: Record<string, string> = {
     player: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5-10-6.5Z"/></svg>',
-    library: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h13v3H5zM4 10.5h14v3H4zM6 15.5h12v3H6z"/></svg>',
-    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.7 3.8.6 1.7a7.4 7.4 0 0 1 2.4 0l.6-1.7 2.1.9-.7 1.7c.7.5 1.3 1.1 1.8 1.8l1.7-.7.9 2.1-1.7.6a7.4 7.4 0 0 1 0 2.4l1.7.6-.9 2.1-1.7-.7a7.4 7.4 0 0 1-1.8 1.8l.7 1.7-2.1.9-.6-1.7a7.4 7.4 0 0 1-2.4 0l-.6 1.7-2.1-.9.7-1.7a7.4 7.4 0 0 1-1.8-1.8l-1.7.7-.9-2.1 1.7-.6a7.4 7.4 0 0 1 0-2.4l-1.7-.6.9-2.1 1.7.7a7.4 7.4 0 0 1 1.8-1.8l-.7-1.7 2.1-.9ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
-    about: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 10.5v5"/><circle cx="12" cy="7.5" r=".8" class="nav-dot"/></svg>'
+    library: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" d="M5 5.5h13a1 1 0 0 1 1 1v2H5zM4 10.5h14a1 1 0 0 1 1 1v2H4zM6 15.5h12a1 1 0 0 1 1 1v2H6z"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3" fill="none"/></svg>',
+    about: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none"/><text x="12" y="16.5" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">i</text></svg>'
   };
   link.innerHTML = `${icons[name]}<span class="sr-only">${labels[name]}</span>`;
   link.setAttribute('aria-label', labels[name]);

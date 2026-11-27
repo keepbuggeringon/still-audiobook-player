@@ -214,6 +214,7 @@ header { padding-left: 4px; padding-right: 4px; }
 header .brand-icon { width: 40px; height: 40px; border-radius: 11px; }
 header .brand { gap: 10px; }
 .page-navigation { background: var(--surface-soft); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
+html[data-accent] .page-navigation { border-color: var(--accent); }
 .page-navigation a { padding: 9px 14px; border-radius: 10px; }
 .page-view { margin-top: 24px; }
 .page-view .player { padding: 26px; border-radius: 24px; border-color: color-mix(in srgb, var(--accent) 32%, var(--line)); box-shadow: 0 18px 45px color-mix(in srgb, var(--accent) 14%, transparent); }

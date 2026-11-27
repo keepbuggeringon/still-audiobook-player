@@ -207,7 +207,12 @@ async function renderLibrary() {
     const button = document.createElement('button'); button.className = 'book-open';
     const available = audioIds.has(b.id) || sessionFiles.has(b.id);
     if (b.cover) { const image = document.createElement('img'); image.src = `data:${b.cover.mime};base64,${b.cover.data}`; image.alt = ''; image.className = 'book-cover'; button.append(image); }
-    const title = document.createElement('span'); title.textContent = b.title; title.className = 'book-title'; button.append(title);
+    const copy = document.createElement('span'); copy.className = 'book-copy';
+    const title = document.createElement('span'); title.textContent = b.title; title.className = 'book-title';
+    const remaining = document.createElement('span'); remaining.className = 'book-remaining';
+    const remainingSeconds = Math.max(0, (b.duration || 0) - (b.position || 0));
+    remaining.textContent = remainingSeconds > 0 ? `${time(remainingSeconds / (b.rate || 1))} left` : 'Finished';
+    copy.append(title, remaining); button.append(copy);
     button.onclick = () => {
       if (!available) {
         say(`Choose ${b.filename} once to save it for future listening.`, true);

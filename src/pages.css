@@ -169,3 +169,19 @@ html[data-accent] .page-view .settings-row .tiny, html[data-accent] .page-view .
 html[data-theme=dark][data-accent] .page-view, html[data-theme=dark][data-accent] .page-view p, html[data-theme=dark][data-accent] .page-view .tiny, html[data-theme=dark][data-accent] .page-view .muted, html[data-theme=dark][data-accent] .page-view .lede, html[data-theme=dark][data-accent] .page-view .times, html[data-theme=dark][data-accent] .page-view .eyebrow, html[data-theme=dark][data-accent] .page-view label, html[data-theme=dark][data-accent] .page-view summary, html[data-theme=dark][data-accent] .page-view footer { color: var(--ink) !important; }
 html[data-theme=dark][data-accent] .page-view h1, html[data-theme=dark][data-accent] .page-view h2, html[data-theme=dark][data-accent] .page-view #current-chapter { color: var(--ink) !important; }
 html[data-theme=dark][data-accent] .page-view .book-menu summary, html[data-theme=dark][data-accent] .page-view .text-button { color: var(--ink) !important; }
+
+/* The installed Home Screen icon stays neutral, while the in-app mark follows the selected accent. */
+.brand-icon { transition: filter .18s ease; }
+html[data-accent=green] .brand-icon { filter: sepia(.45) saturate(1.45) hue-rotate(70deg); }
+html[data-accent=purple] .brand-icon { filter: sepia(.5) saturate(1.55) hue-rotate(235deg); }
+html[data-accent=blue] .brand-icon { filter: sepia(.35) saturate(1.45) hue-rotate(175deg); }
+html[data-accent=turquoise] .brand-icon { filter: sepia(.45) saturate(1.55) hue-rotate(145deg); }
+html[data-accent=aqua] .brand-icon { filter: sepia(.4) saturate(1.5) hue-rotate(165deg); }
+html[data-accent=grey] .brand-icon { filter: grayscale(1) brightness(.92); }
+
+/* Keep the cover inside the row's hover surface and allow long titles two readable lines. */
+.book-open { padding: 8px; border-radius: 12px; }
+.book-open:hover { background: var(--surface-soft); }
+.book-copy { display: grid; gap: 2px; min-width: 0; }
+.book-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.25; }
+.book-remaining { display: block; margin: 0; text-align: left; font-size: 12px; line-height: 1.25; color: var(--muted-ink); opacity: 1; }

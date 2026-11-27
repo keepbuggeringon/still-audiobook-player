@@ -12,7 +12,7 @@ for (const [tag, path] of styles) {
 }
 await writeFile('dist/index.html', html);
 const files = await readdir('dist', { recursive:true });
-const paths = files.filter(p=>(p === 'quiet-test.m4a' || /\.(html|js|css|svg|webmanifest)$/.test(p)) && p !== 'sw.js');
+const paths = files.filter(p=>(p === 'quiet-test.m4a' || /\.(html|js|css|svg|png|webmanifest)$/.test(p)) && p !== 'sw.js');
 const hash = createHash('sha256'); for (const p of paths.sort()) hash.update(await readFile(`dist/${p}`));
 const name = `still-${hash.digest('hex').slice(0,12)}`;
 const source = `const NAME=${JSON.stringify(name)}, ASSETS=${JSON.stringify(paths.map(p=>'./'+p))};

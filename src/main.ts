@@ -374,7 +374,10 @@ function jumpChapter(direction: -1 | 1) {
   if (direction < 0) jump(current.chapters[index - 1]?.start ?? current.chapters[index].start);
   else if (current.chapters[index + 1]) jump(current.chapters[index + 1].start);
 }
-$('back').onclick = () => jump(audio.currentTime - seekSeconds); $('forward').onclick = () => jump(audio.currentTime + seekSeconds);
+const rewind = () => jump(audio.currentTime - seekSeconds);
+const forward = () => jump(audio.currentTime + seekSeconds);
+$('back').onclick = rewind;
+$('forward').onclick = forward;
 $('prev-chapter').onclick = () => jumpChapter(-1); $('next-chapter').onclick = () => jumpChapter(1);
 seek.oninput = () => { scrubbing = true; };
 seek.onchange = () => {
@@ -475,9 +478,9 @@ window.addEventListener('pagehide', () => { event('pagehide'); recordProgress();
 if ('mediaSession' in navigator) {
   const actions: [MediaSessionAction, MediaSessionActionHandler][] = [
     ['play', () => { event('remote-play'); void audio.play().catch(fail); }], ['pause', () => { event('remote-pause'); audio.pause(); }],
-    ['seekbackward', d => jump(audio.currentTime - (d.seekOffset || seekSeconds))], ['seekforward', d => jump(audio.currentTime + (d.seekOffset || seekSeconds))], ['seekto', d => { if (d.seekTime !== undefined) jump(d.seekTime); }],
-    ['previoustrack', () => jumpChapter(-1)],
-    ['nexttrack', () => jumpChapter(1)]
+    ['seekbackward', rewind], ['seekforward', forward],
+    ['seekto', d => { if (d.seekTime !== undefined) jump(d.seekTime); }],
+    ['previoustrack', rewind], ['nexttrack', forward]
   ];
   for (const [action, fn] of actions) try { navigator.mediaSession.setActionHandler(action, fn); } catch { /* Unsupported OS action. */ }
 }

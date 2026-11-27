@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { QuietDetector, emptyMaps, skipTarget, diagnosticSource } from '../src/analysis';
+import { QuietDetector, emptyMaps, skipTarget, customSkipTarget, diagnosticSource } from '../src/analysis';
 
 function feed(detector: QuietDetector, segments: {seconds:number; value:number}[], chunk = 1024, stereo = false) {
   const rate=8000, pcm=new Float32Array(Math.round(segments.reduce((n,s)=>n+s.seconds,0)*rate));
@@ -35,6 +35,14 @@ test('skip boundaries retain padding and off disables all skips',()=>{
   assert.equal(skipTarget(m,'conservative',2.1),4.7);assert.equal(skipTarget(m,'conservative',2.4),4.7);
   assert.equal(skipTarget(m,'conservative',4.7),null);assert.equal(skipTarget(m,'conservative',6),null);
   assert.equal(skipTarget(m,'conservative',10.5),12.7);assert.equal(skipTarget(m,'off',10.5),null);
+});
+test('custom profile detects and trims a configured quiet pause',()=>{
+  const d = new QuietDetector({ db: -43, minimum: .8, padding: .2 });
+  const m = feed(d, [{ seconds: 1, value: .1 }, { seconds: 1.1, value: 0 }, { seconds: 1, value: .1 }]);
+  assert.equal(d.custom.length, 1);
+  const target = customSkipTarget(d.custom, { db: -43, minimum: .8, padding: .2 }, d.custom[0][0]);
+  assert.ok(target !== null && Math.abs(target - 1.9) < .021);
+  assert.equal(m.conservative.length, 0);
 });
 test('checkpoint cannot advance past an unfinished quiet span',()=>{
   const d=new QuietDetector();d.push([new Float32Array(16000)],8000,0);assert.equal(d.checkpointTime(),0);

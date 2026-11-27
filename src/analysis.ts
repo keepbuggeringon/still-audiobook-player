@@ -1,17 +1,22 @@
 export type Interval = [number, number];
-export type Strength = 'off' | 'conservative' | 'balanced' | 'strong';
+export type Strength = 'off' | 'conservative' | 'balanced' | 'strong' | 'custom';
+export type QuietProfile = { db: number; minimum: number; padding: number };
 export const profiles = {
   conservative: { db: -48, minimum: 1.2, padding: .30 },
   balanced: { db: -43, minimum: .9, padding: .22 },
   strong: { db: -38, minimum: .45, padding: .12 },
 } as const;
-export type Maps = Record<Exclude<Strength, 'off'>, Interval[]>;
+export const defaultCustomProfile: QuietProfile = { db: -43, minimum: .9, padding: .22 };
+export type Maps = Record<'conservative' | 'balanced' | 'strong', Interval[]>;
 export const emptyMaps = (): Maps => ({ conservative: [], balanced: [], strong: [] });
 
 // 20ms windows use the loudest channel's RMS. Opposing stereo phases cannot cancel speech.
 export class QuietDetector {
   maps = emptyMaps();
-  private active: Record<string, number | null> = { conservative: null, balanced: null, strong: null };
+  custom: Interval[] = [];
+  private customProfile?: QuietProfile;
+  private active: Record<string, number | null> = { conservative: null, balanced: null, strong: null, custom: null };
+  constructor(customProfile?: QuietProfile) { this.customProfile = customProfile; }
   private sums: number[] = [];
   private count = 0;
   private start = 0;
@@ -36,6 +41,10 @@ export class QuietDetector {
           if (db <= p.db) this.active[name] ??= Math.max(0, this.start);
           else this.close(name as keyof Maps, this.start);
         }
+        if (this.customProfile) {
+          if (db <= this.customProfile.db) this.active.custom ??= Math.max(0, this.start);
+          else this.closeCustom(this.start);
+        }
         this.lastEnd = end; this.count = 0; this.sums.fill(0);
       }
     }
@@ -46,9 +55,15 @@ export class QuietDetector {
     if (start !== null && end - start >= profiles[name].minimum) this.maps[name].push([start, end]);
     this.active[name] = null;
   }
+  private closeCustom(end: number) {
+    const start = this.active.custom;
+    if (start !== null && this.customProfile && end - start >= this.customProfile.minimum) this.custom.push([start, end]);
+    this.active.custom = null;
+  }
   flush(end = this.lastEnd) {
     // Do not classify a partial trailing window as quiet.
     for (const name of Object.keys(profiles) as (keyof Maps)[]) this.close(name, this.count ? this.start : end);
+    if (this.customProfile) this.closeCustom(this.count ? this.start : end);
   }
   checkpointTime() {
     return Math.max(0, Math.min(this.count ? this.start : this.lastEnd, ...Object.values(this.active).filter((n): n is number => n !== null)));
@@ -57,7 +72,16 @@ export class QuietDetector {
 
 export function skipTarget(maps: Maps, strength: Strength, time: number): number | null {
   if (strength === 'off') return null;
+  if (strength === 'custom') return null;
   const list = maps[strength], pad = profiles[strength].padding;
+  return targetInIntervals(list, pad, time);
+}
+
+export function customSkipTarget(list: Interval[], profile: QuietProfile, time: number): number | null {
+  return targetInIntervals(list, profile.padding, time);
+}
+
+function targetInIntervals(list: Interval[], pad: number, time: number): number | null {
   let lo = 0, hi = list.length;
   while (lo < hi) { const mid = (lo + hi) >>> 1; if (list[mid][1] <= time) lo = mid + 1; else hi = mid; }
   const interval = list[lo];

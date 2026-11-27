@@ -242,3 +242,10 @@ header .brand { gap: 10px; }
   .player .buttons #back, .player .buttons #forward { width: 64px; min-width: 64px; }
   .player .play { width: 64px !important; min-width: 64px !important; height: 64px !important; }
 }
+.custom-controls { display: grid; gap: 12px; margin-top: 16px; padding: 18px; border-radius: 16px; background: var(--surface-soft); }
+.custom-controls[hidden] { display: none; }
+.custom-controls .card-top { margin-bottom: -2px; }
+.custom-controls label { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; align-items: center; }
+.custom-controls output { color: var(--accent); font-variant-numeric: tabular-nums; }
+.custom-controls input[type=range] { grid-column: 1 / -1; width: 100%; }
+.custom-controls .secondary { min-height: 40px; margin-top: 4px; }

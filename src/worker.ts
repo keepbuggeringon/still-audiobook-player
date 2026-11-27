@@ -27,7 +27,7 @@ self.onmessage = async ({ data }) => {
       stage('decoder-check', { codec: await track.getCodec() });
       if (!(await track.canDecode())) throw Error('This browser cannot decode this audio track for analysis. Ordinary playback may still work.');
       stage('decoding', { codec: await track.getCodec(), canDecode: true });
-      const decoder = new AudioSampleSink(track), detector = new QuietDetector();
+      const decoder = new AudioSampleSink(track), detector = new QuietDetector(data.customProfile);
       const from = Math.max(0, Number(data.from) || 0);
       // Re-read a short overlap; parent merges only intervals ending before this point.
       const start = Math.max(0, from - 2);
@@ -36,7 +36,8 @@ self.onmessage = async ({ data }) => {
       const send = (done: boolean) => {
         const delta = {} as Maps;
         for (const key of Object.keys(detector.maps) as (keyof Maps)[]) { delta[key] = detector.maps[key]; detector.maps[key] = []; }
-        self.postMessage({ type: 'analysis', maps: delta, until: done ? until : detector.checkpointTime(), progress: until, complete: done, duration, start });
+        const custom = detector.custom.splice(0);
+        self.postMessage({ type: 'analysis', maps: delta, custom, until: done ? until : detector.checkpointTime(), progress: until, complete: done, duration, start });
       };
       for await (const sample of decoder.samples(start)) {
         try {

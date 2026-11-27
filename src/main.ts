@@ -37,6 +37,10 @@ const playerControls = document.createElement('div');
 playerControls.className = 'settings-row';
 playerControls.append(document.getElementById('speed')!.closest('label')!, document.getElementById('strength')!.closest('label')!);
 document.querySelector('.transport')!.after(playerControls);
+const customControls = document.createElement('div');
+customControls.className = 'custom-controls card';
+customControls.innerHTML = `<div class="card-top"><strong>Custom quiet skipping</strong><span class="tiny">Per-book</span></div><p class="tiny">Start with the middle setting. Higher sensitivity catches more room tone; longer pauses and more retained silence sound more natural.</p><label>Sensitivity <output id="custom-sensitivity-value">3</output><input id="custom-sensitivity" type="range" min="1" max="5" step="1" value="3"></label><label>Minimum quiet pause <output id="custom-minimum-value">0.9s</output><input id="custom-minimum" type="range" min="0.3" max="2" step="0.1" value="0.9"></label><label>Silence to retain <output id="custom-padding-value">0.22s</output><input id="custom-padding" type="range" min="0.05" max="0.5" step="0.01" value="0.22"></label><button id="custom-preview" class="secondary">Preview first detected pause</button><p id="custom-status" class="tiny" role="status"></p>`;
+document.querySelector('.transport')!.after(customControls);
 const aboutCard = document.createElement('section');
 aboutCard.className = 'card';
 views.get('about')!.id = 'about';
@@ -46,6 +50,7 @@ for (const [title, description] of [
   ['Conservative', 'Skip very quiet pauses lasting at least 1.2 seconds. Leave about 0.30 seconds before the next sound.'],
   ['Balanced', 'Include more background noise and pauses lasting at least 0.9 seconds. Leave about 0.22 seconds before the next sound.'],
   ['Strong', 'Skip quiet pauses lasting at least 0.45 seconds. Leave about 0.12 seconds before the next sound. This can still shorten breaths and very soft speech. Choose a gentler level if you hear clipped speech.'],
+  ['Custom', 'Choose how sensitive detection is, the shortest quiet pause to skip, and how much silence to retain before speech. Custom settings are saved per book and analyzed locally.'],
   ['Updating analysis', 'For a previously analysed book, choose Update pause analysis to enable the new Strong detection. Keep the app visible during analysis.'],
   ['Time remaining', 'Chapter position uses the original recording timeline. Remaining times account for playback speed and are estimates before quiet skipping. Books without chapter metadata show unavailable chapter times.'],
   ['On your device', 'Imported audio, analysis, and listening positions are stored locally in this browser. Reopening restores your last book, ready for you to press Play. Local copies use device storage. Clearing browser website data removes this library. Background quiet skipping is still being tested on iPhone.']
@@ -80,7 +85,7 @@ function navigate() {
 }
 window.addEventListener('hashchange', navigate);
 navigate();
-import { diagnosticSource, emptyMaps, skipTarget, type Strength, type Maps } from './analysis';
+import { diagnosticSource, emptyMaps, skipTarget, customSkipTarget, defaultCustomProfile, type Strength, type Maps, type QuietProfile } from './analysis';
 import { all, put, fingerprint, clearRecords, deleteBook, saveImportedBook, storedAudio, storedAudioIds } from './db';
 import { checkAudioFile } from './imports';
 import { confirmedSeek } from './seek-result';
@@ -134,6 +139,26 @@ function applyAccent(value: string) { document.documentElement.dataset.accent = 
 applyTheme(savedTheme);
 applyAccent(savedAccent);
 const time = (n: number) => { n = Math.max(0, Math.floor(n || 0)); return n >= 3600 ? `${Math.floor(n/3600)}:${String(Math.floor(n%3600/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}` : `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`; };
+const sensitivityDb = (value: number) => [-50, -46, -43, -40, -36][Math.max(0, Math.min(4, Math.round(value) - 1))];
+const profileKey = (profile: QuietProfile) => `${profile.db}:${profile.minimum.toFixed(2)}:${profile.padding.toFixed(2)}`;
+function ensureCustomProfile(book: Book) { book.customProfile ??= { ...defaultCustomProfile }; book.customMap ??= []; return book.customProfile; }
+function customProfileFromControls(): QuietProfile {
+  return { db: sensitivityDb(Number($<HTMLInputElement>('custom-sensitivity').value)), minimum: Number($<HTMLInputElement>('custom-minimum').value), padding: Number($<HTMLInputElement>('custom-padding').value) };
+}
+function renderCustomControls() {
+  const visible = strength.value === 'custom';
+  customControls.hidden = !visible;
+  if (!current) return;
+  const profile = ensureCustomProfile(current);
+  const sensitivity = Math.max(1, [-50, -46, -43, -40, -36].indexOf(profile.db) + 1);
+  $<HTMLInputElement>('custom-sensitivity').value = String(sensitivity);
+  $<HTMLInputElement>('custom-minimum').value = String(profile.minimum);
+  $<HTMLInputElement>('custom-padding').value = String(profile.padding);
+  $('custom-sensitivity-value').textContent = String(sensitivity);
+  $('custom-minimum-value').textContent = `${profile.minimum.toFixed(1)}s`;
+  $('custom-padding-value').textContent = `${profile.padding.toFixed(2)}s`;
+  $('custom-status').textContent = current.customAnalysisKey === profileKey(profile) && current.customMap?.length ? `${current.customMap.length.toLocaleString()} custom quiet intervals ready.` : 'Adjusting these controls requires a fresh local analysis.';
+}
 function say(message: string, persistent = false) { clearTimeout(toastTimer); $('message').textContent = message; if (!persistent) toastTimer = window.setTimeout(() => $('message').textContent = '', 9000); }
 function fail(e: unknown) { say(e instanceof Error ? e.message : String(e), true); }
 function env() { return { version: VERSION, userAgent: navigator.userAgent, secureContext: isSecureContext, audioDecoder: 'AudioDecoder' in globalThis, mediaSession: 'mediaSession' in navigator, serviceWorker: 'serviceWorker' in navigator, standalone: matchMedia('(display-mode: standalone)').matches, language: navigator.language }; }
@@ -160,7 +185,8 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
   const fraction = current.duration > 0 ? Math.min(1, progress / current.duration) : 0;
   $<HTMLProgressElement>('analysis-progress').value = current.complete ? 1 : fraction;
   $('analysis-percent').textContent = current.complete ? 'Ready' : `${Math.round(fraction*100)}%`;
-  const count = current.maps[strength.value === 'off' ? 'conservative' : strength.value as keyof Maps].length;
+  const profile = ensureCustomProfile(current);
+  const count = strength.value === 'custom' ? (current.customMap?.length || 0) : current.maps[strength.value === 'off' ? 'conservative' : strength.value as keyof Maps].length;
   $('analysis-status').textContent = synthetic ? 'Known pauses in generated test audio.' : `${count.toLocaleString()} quiet intervals · ${time(progress)} analysed. ${current.complete ? 'Ready for playback.' : 'Complete analysis to enable quiet skipping.'}`;
   if (!synthetic && current.complete && current.analysisVersion !== 4) {
     $('analysis-status').textContent += ' Update pause analysis for the revised Strong level. Balanced is used for Strong until then.';
@@ -169,15 +195,17 @@ function renderAnalysis(progress = current?.analyzedUntil || 0) {
   $('analyse').textContent = current.analysisVersion !== 4 && current.analyzedUntil > 0 ? 'Update pause analysis' : current.analyzedUntil > 0 && !current.complete ? 'Resume analysis' : 'Analyse book';
   $('cancel').hidden = !worker;
   strength.disabled = false;
-  const needsUpdate = !synthetic && strength.value === 'strong' && current.analysisVersion !== 4;
+  const needsUpdate = !synthetic && ((strength.value === 'strong' && current.analysisVersion !== 4) || (strength.value === 'custom' && current.customAnalysisKey !== profileKey(profile)));
   $('quiet-status').textContent = strength.value === 'off' ? '' : current.analysisError ? `Quiet skipping needs attention. ${current.analysisError}` : !current.complete ? worker ? `Preparing quiet skipping · ${Math.round(fraction * 100)}%` : 'Prepare this book to enable quiet skipping.' : needsUpdate ? 'Update analysis to apply Strong.' : '';
   $('prepare-quiet').hidden = strength.value === 'off' || (!!current.complete && !current.analysisError && !needsUpdate) || !!worker;
   if (current.analysisError) $('analysis-percent').textContent = 'Failed';
   $('diagnostic-status').textContent = current.analysisError || (current.complete ? 'Analysis complete' : stage);
   $('file-diagnostics').textContent = `Container: ${current.container || 'unknown'} · Codec: ${current.codec || 'unknown'} · Duration: ${time(current.duration)} · Chapters: ${current.chapters.length} · Worker decoder: ${decoder}`;
+  renderCustomControls();
 }
 function renderBook() {
   if (!current) return;
+  ensureCustomProfile(current);
   $('player-title').textContent = current.title;
   strength.value = current.strength; speed.value = String(current.rate); seekStep.value = String(seekSeconds);
   $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`;
@@ -274,7 +302,7 @@ async function loadFile(selected: File, importAudio = true) {
     const id = await fingerprint(selected);
     file = selected; synthetic = false;
     const saved = books.find(b => b.id === id);
-    current = saved || { id, title: selected.name, filename: selected.name, size: selected.size, duration: 0, chapters: [], maps: emptyMaps(), analyzedUntil: 0, complete: false, position: 0, strength: 'conservative', rate: 1, updated: Date.now() };
+    current = saved || { id, title: selected.name, filename: selected.name, size: selected.size, duration: 0, chapters: [], maps: emptyMaps(), analyzedUntil: 0, complete: false, position: 0, strength: 'conservative', rate: 1, updated: Date.now(), customProfile: { ...defaultCustomProfile }, customMap: [] };
     try {
       const progress = JSON.parse(localStorage.getItem(`still-position-${id}`) || 'null');
       if (progress && Number.isFinite(progress.position) && progress.position >= 0) current.position = progress.position;
@@ -325,13 +353,17 @@ $('demo').onclick = () => {
   if (busy) return;
   generation++; recordProgress(); endSession('source-changed'); stopWorker();
   const d = diagnosticSource(); synthetic = true; file = null;
-  current = { id:'synthetic', title:'The screen-lock test', filename:'', size:d.blob.size, duration:d.seconds, chapters:[], maps:d.maps, analyzedUntil:d.seconds, complete:true, position:0, strength:'conservative', rate:1, updated:Date.now() };
+  current = { id:'synthetic', title:'The screen-lock test', filename:'', size:d.blob.size, duration:d.seconds, chapters:[], maps:d.maps, analyzedUntil:d.seconds, complete:true, position:0, strength:'conservative', rate:1, updated:Date.now(), customProfile: { ...defaultCustomProfile }, customMap: [] };
   renderBook(); setSource(d.blob); say('Press Play and listen to the short pauses before starting a locked-screen session.');
 };
 $('analyse').onclick = () => {
   if (!file || !current || worker || synthetic) return;
-  if (current.analysisVersion !== 4 || (current.analysisError && current.complete)) {
+  const customProfile = ensureCustomProfile(current);
+  const customNeedsUpdate = strength.value === 'custom' && current.customAnalysisKey !== profileKey(customProfile);
+  if (current.analysisVersion !== 4 || (current.analysisError && current.complete) || customNeedsUpdate) {
     current.maps = emptyMaps();
+    current.customMap = [];
+    current.customAnalysisKey = undefined;
     current.analyzedUntil = 0;
     current.complete = false;
     current.analysisVersion = 4;
@@ -358,14 +390,19 @@ $('analyse').onclick = () => {
         else book.maps[key].push(interval);
       }
     }
+    for (const interval of (data.custom || []) as [number, number][]) {
+      const previous = book.customMap?.at(-1);
+      if (previous && interval[0] <= previous[1] + .025) previous[1] = Math.max(previous[1], interval[1]);
+      else (book.customMap ??= []).push(interval);
+    }
     first = false; book.analyzedUntil = Math.max(0, data.until); book.complete = data.complete;
     if (!book.duration && data.duration) book.duration = data.duration;
     renderAnalysis(data.progress); void saveBook();
-    if (data.complete) { stopWorker(); event('analysis-complete', { seconds: (performance.now()-began)/1000 }); say('Analysis complete. Start a book test session to check locked-screen skipping.'); void renderLibrary(); }
+    if (data.complete) { book.customAnalysisKey = profileKey(customProfile); stopWorker(); event('analysis-complete', { seconds: (performance.now()-began)/1000 }); say('Analysis complete. Start a book test session to check locked-screen skipping.'); void renderLibrary(); }
   };
   w.onerror = e => { if (run === runId) analysisFailed(stage, workerError(e)); };
   w.onmessageerror = () => { if (run === runId) analysisFailed(stage, 'Unreadable response from decoder'); };
-  w.postMessage({ type: 'analyse', file, from: book.analyzedUntil }); renderAnalysis(); say('Analysing locally. Keep this app visible; you can stop and resume later.');
+  w.postMessage({ type: 'analyse', file, from: book.analyzedUntil, customProfile }); renderAnalysis(); say('Analysing locally. Keep this app visible; you can stop and resume later.');
 };
 $('cancel').onclick = () => { stage = 'Analysis stopped'; stopWorker(); say('Analysis stopped. Completed checkpoints are saved.'); };
 function jump(to: number) { if (!current || !Number.isFinite(audio.duration)) return; event('manual-seek', { to }); seekingBySkip = false; audio.currentTime = Math.max(0, Math.min(audio.duration, to)); recordProgress(); }
@@ -396,9 +433,27 @@ speed.onchange = () => { audio.playbackRate = Number(speed.value); recordProgres
 strength.onchange = () => {
   if (current) current.strength = strength.value as Strength;
   recordProgress(); renderAnalysis(); event('strength', { value: strength.value });
-  if (strength.value !== 'off' && file && current && (!current.complete || !!current.analysisError || (strength.value === 'strong' && current.analysisVersion !== 4)) && !worker) $('analyse').click();
+  if (strength.value !== 'off' && file && current && (!current.complete || !!current.analysisError || (strength.value === 'strong' && current.analysisVersion !== 4) || (strength.value === 'custom' && current.customAnalysisKey !== profileKey(ensureCustomProfile(current)))) && !worker) $('analyse').click();
 };
 $('prepare-quiet').onclick = () => $('analyse').click();
+for (const id of ['custom-sensitivity', 'custom-minimum', 'custom-padding']) {
+  $<HTMLInputElement>(id).addEventListener('input', () => {
+    if (!current) return;
+    const profile = customProfileFromControls();
+    current.customProfile = profile;
+    current.customAnalysisKey = undefined;
+    $(`${id}-value`).textContent = id === 'custom-sensitivity' ? String(Math.round(Number($<HTMLInputElement>(id).value))) : `${Number($<HTMLInputElement>(id).value).toFixed(id === 'custom-minimum' ? 1 : 2)}s`;
+    renderCustomControls();
+    void saveBook();
+    if (strength.value === 'custom' && file && !worker) renderAnalysis();
+  });
+}
+$('custom-preview').onclick = () => {
+  if (!current?.customMap?.length || current.customAnalysisKey !== profileKey(ensureCustomProfile(current))) {
+    say('Analyse this book with Custom selected before previewing a pause.', true); return;
+  }
+  jump(current.customMap[0][0]); void audio.play().catch(fail); say('Previewing the first detected custom pause.');
+};
 seekStep.onchange = () => { seekSeconds = Number(seekStep.value); localStorage.setItem('still-seek-seconds', String(seekSeconds)); $('back').textContent = `−${seekSeconds}s`; $('forward').textContent = `+${seekSeconds}s`; event('seek-step', { value: seekSeconds }); };
 theme.onchange = () => { localStorage.setItem('still-theme', theme.value); applyTheme(theme.value); };
 accent.onchange = () => { localStorage.setItem('still-accent', accent.value); applyAccent(accent.value); };
@@ -451,7 +506,7 @@ function tick() {
   if (seekingBySkip && now - skipRequestAt > 5000) { missed++; trace('seek-timeout', pending); pending = null; seekingBySkip = false; }
   if (current.complete && !current.analysisError && !audio.seeking && !seekingBySkip) {
     const selectedStrength = strength.value === 'strong' && !synthetic && current.analysisVersion !== 4 ? 'balanced' : strength.value as Strength;
-    const target = scrubbing ? null : skipTarget(current.maps, selectedStrength, audio.currentTime);
+    const target = scrubbing ? null : selectedStrength === 'custom' ? customSkipTarget(current.customMap || [], ensureCustomProfile(current), audio.currentTime) : skipTarget(current.maps, selectedStrength, audio.currentTime);
     if (target !== null && target < audio.duration) {
       requested++; pending = { from: audio.currentTime, target }; trace('skip-request', pending);
       if (session && !session.ended) { session.skipped++; if (document.hidden) session.hiddenSkips++; }

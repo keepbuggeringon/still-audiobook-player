@@ -271,5 +271,11 @@ html[data-accent] .page-navigation { border-color: var(--accent); }
 @font-face { font-family: 'Atkinson Hyperlegible Mono'; src: url('/still-audiobook-player/fonts/AtkinsonHyperlegibleMono-Bold.otf') format('opentype'); font-style: normal; font-weight: 700; font-display: swap; }
 html[data-accent] body, html[data-accent] button, html[data-accent] select, html[data-accent] textarea, html[data-accent] input { font-family: 'Atkinson Hyperlegible Mono', monospace; }
 html[data-accent] .settings-clear, html[data-accent] .settings-diagnostics { border: 1px solid var(--line) !important; box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 8%, transparent); }
-html[data-accent] header .brand { isolation: isolate; padding: 3px; border-radius: 13px; background: color-mix(in srgb, var(--accent) 45%, #101010); }
-html[data-accent] header .brand-icon { mix-blend-mode: screen; }
+html[data-accent] header .brand { isolation: auto; padding: 0; background: transparent; }
+html[data-accent] header .brand-icon { mix-blend-mode: normal; filter: contrast(1.12) sepia(1) saturate(2.4) brightness(.62); }
+html[data-accent=green] header .brand-icon { filter: contrast(1.12) sepia(1) saturate(2.8) hue-rotate(55deg) brightness(.62); }
+html[data-accent=purple] header .brand-icon { filter: contrast(1.12) sepia(1) saturate(3.1) hue-rotate(230deg) brightness(.62); }
+html[data-accent=blue] header .brand-icon { filter: contrast(1.12) sepia(1) saturate(3) hue-rotate(175deg) brightness(.62); }
+html[data-accent=turquoise] header .brand-icon { filter: contrast(1.12) sepia(1) saturate(2.8) hue-rotate(145deg) brightness(.62); }
+html[data-accent=aqua] header .brand-icon { filter: contrast(1.12) sepia(1) saturate(2.8) hue-rotate(165deg) brightness(.62); }
+html[data-accent=grey] header .brand-icon { filter: grayscale(1) brightness(.62) contrast(1.12); }

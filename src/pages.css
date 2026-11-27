@@ -72,6 +72,7 @@ html[data-theme=dark] .page-navigation { border-color: #30423a; }
 
 body, button, select, textarea, input { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 h1, h2, .brand { font-family: inherit; letter-spacing: -0.6px; }
+.brand-icon { width: 34px; height: 34px; display: block; object-fit: cover; border-radius: 8px; }
 .library-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .library-title h1 { margin-bottom: 0; }
 .add-book { width: 32px; min-height: 32px; height: 32px; padding: 0; border-radius: 50%; font-size: 20px; line-height: 1; }
